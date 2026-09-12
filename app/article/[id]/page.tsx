@@ -23,7 +23,6 @@ export default function ArticlePage() {
       setA(data);
 
       const raw = localStorage.getItem('payread_access');
-
       const token = raw ? JSON.parse(raw)[id] : null;
 
       if (token) {
