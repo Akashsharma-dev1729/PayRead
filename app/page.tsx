@@ -2,13 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Payment } from '@/lib/types';
+
+type AdminPayment = {
+  id: string;
+  article_id: string;
+  amount_paise: number;
+  status: string;
+  transaction_ref: string;
+  access_token: string;
+  created_at: string;
+  articles?: {
+    title: string;
+  } | null;
+};
 
 export default function Admin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [session, setSession] = useState<any>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
@@ -49,7 +61,7 @@ export default function Admin() {
       return;
     }
 
-    setPayments(data || []);
+    setPayments((data || []) as AdminPayment[]);
   }
 
   async function approve(id: string) {
@@ -126,8 +138,8 @@ export default function Admin() {
       </button>
 
       <p className="muted small">
-        Only approve payments after you have independently confirmed the money
-        was received.
+        Only approve payments after you have independently confirmed
+        the money was received.
       </p>
 
       <table className="table">
@@ -143,7 +155,9 @@ export default function Admin() {
         <tbody>
           {payments.map((p) => (
             <tr key={p.id}>
-              <td>{p.article_id}</td>
+              <td>
+                {p.articles?.title || p.article_id}
+              </td>
 
               <td>
                 ₹{(p.amount_paise / 100).toFixed(2)}
