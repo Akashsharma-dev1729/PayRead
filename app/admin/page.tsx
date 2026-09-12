@@ -28,9 +28,11 @@ export default function Admin() {
       setSession(data.session);
     });
 
-    return supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    }).data.subscription.unsubscribe;
+    return supabase.auth
+      .onAuthStateChange((_e, s) => {
+        setSession(s);
+      })
+      .data.subscription.unsubscribe;
   }, []);
 
   async function login() {
