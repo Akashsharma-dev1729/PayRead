@@ -1,182 +1,88 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import PayModal from '@/components/PayModal';
 import { supabase } from '@/lib/supabase';
+import { formatPrice } from '@/lib/payment';
+import type { Article } from '@/lib/types';
 
-type AdminPayment = {
-  id: string;
-  article_id: string;
-  amount_paise: number;
-  status: string;
-  transaction_ref: string;
-  access_token: string;
-  created_at: string;
-  articles?: {
-    title: string;
-  } | null;
-};
-
-export default function Admin() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [session, setSession] = useState<any>(null);
-  const [payments, setPayments] = useState<AdminPayment[]>([]);
-  const [msg, setMsg] = useState('');
+export default function Home() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [selected, setSelected] = useState<Article | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-    });
-
-    return supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-    }).data.subscription.unsubscribe;
+    supabase
+      .from('articles')
+      .select('*')
+      .eq('published', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setArticles(data || []);
+        setLoading(false);
+      });
   }, []);
 
-  async function login() {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  return (
+    <main className="container">
+      <nav className="nav">
+        <div className="brand">
+          Pay<span>Read</span>
+        </div>
 
-    if (error) {
-      setMsg(error.message);
-    }
-  }
+        <a className="muted small" href="/admin">
+          Admin
+        </a>
+      </nav>
 
-  async function load() {
-    const { data, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        articles (
-          title
-        )
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      <section className="hero">
+        <p className="muted">PAY PER ARTICLE</p>
 
-    if (error) {
-      setMsg(error.message);
-      return;
-    }
-
-    setPayments((data || []) as AdminPayment[]);
-  }
-
-  async function approve(id: string) {
-    const { error } = await supabase
-      .from('payments')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('status', 'pending');
-
-    if (error) {
-      setMsg(error.message);
-    }
-
-    await load();
-  }
-
-  if (!session) {
-    return (
-      <main className="container admin">
-        <h1>PayRead Admin</h1>
+        <h1>Good writing, without another subscription.</h1>
 
         <p className="muted">
-          Sign in to review pending UPI payments.
+          Pay once for the article you actually want to read.
         </p>
+      </section>
 
-        <input
-          className="input"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+      {loading ? (
+        <p className="muted">Loading articles…</p>
+      ) : articles.length === 0 ? (
+        <p className="muted">No published articles yet.</p>
+      ) : (
+        <section className="grid">
+          {articles.map((a) => (
+            <article className="card" key={a.id}>
+              <h2>{a.title}</h2>
 
-        <br />
-        <br />
+              <p className="muted">{a.excerpt}</p>
 
-        <input
-          className="input"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+              <div className="row">
+                <span className="price">
+                  {formatPrice(a.price_paise)}
+                </span>
 
-        <br />
-        <br />
-
-        <button className="btn" onClick={login}>
-          Sign in
-        </button>
-
-        <p className="danger">{msg}</p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="container admin">
-      <div className="row">
-        <h1>Pending payments</h1>
-
-        <button
-          className="btn secondary"
-          onClick={() => supabase.auth.signOut()}
-        >
-          Sign out
-        </button>
-      </div>
-
-      <button className="btn" onClick={load}>
-        Refresh
-      </button>
-
-      <p className="muted small">
-        Only approve payments after you have independently confirmed
-        the money was received.
-      </p>
-
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Article</th>
-            <th>Amount</th>
-            <th>Reference</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {payments.map((p) => (
-            <tr key={p.id}>
-              <td>
-                {p.articles?.title || p.article_id}
-              </td>
-
-              <td>
-                ₹{(p.amount_paise / 100).toFixed(2)}
-              </td>
-
-              <td>{p.transaction_ref}</td>
-
-              <td>
                 <button
                   className="btn"
-                  onClick={() => approve(p.id)}
+                  onClick={() => setSelected(a)}
                 >
-                  Approve
+                  Read for {formatPrice(a.price_paise)}
                 </button>
-              </td>
-            </tr>
+              </div>
+            </article>
           ))}
-        </tbody>
-      </table>
+        </section>
+      )}
+
+      {selected && (
+        <PayModal
+          article={selected}
+          onClose={() => setSelected(null)}
+          onUnlocked={() =>
+            location.assign(`/article/${selected.id}`)
+          }
+        />
+      )}
     </main>
   );
 }
