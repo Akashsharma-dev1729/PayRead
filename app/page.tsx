@@ -1,7 +1,168 @@
 'use client';
-import {useEffect,useState} from 'react';
-import PayModal from '@/components/PayModal';
-import {supabase} from '@/lib/supabase';
-import {formatPrice} from '@/lib/payment';
-import type {Article} from '@/lib/types';
-export default function Home(){const [articles,setArticles]=useState<Article[]>([]);const [selected,setSelected]=useState<Article|null>(null);const [loading,setLoading]=useState(true);useEffect(()=>{supabase.from('articles').select('*').eq('published',true).order('created_at',{ascending:false}).then(({data})=>{setArticles(data||[]);setLoading(false)})},[]);return <main className="container"><nav className="nav"><div className="brand">Pay<span>Read</span></div><a className="muted small" href="/admin">Admin</a></nav><section className="hero"><p className="muted">PAY PER ARTICLE</p><h1>Good writing, without another subscription.</h1><p className="muted">Pay once for the article you actually want to read.</p></section>{loading?<p className="muted">Loading articles…</p>:articles.length===0?<p className="muted">No published articles yet.</p>:<section className="grid">{articles.map(a=><article className="card" key={a.id}><h2>{a.title}</h2><p className="muted">{a.excerpt}</p><div className="row"><span className="price">{formatPrice(a.price_paise)}</span><button className="btn" onClick={()=>setSelected(a)}>Read for {formatPrice(a.price_paise)}</button></div></article>)}</section>}{selected&&<PayModal article={selected} onClose={()=>setSelected(null)} onUnlocked={()=>location.assign(`/article/${selected.id}`)}/>}</main>}
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { Payment } from '@/lib/types';
+
+export default function Admin() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [session, setSession] = useState<any>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    return supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+    }).data.subscription.unsubscribe;
+  }, []);
+
+  async function login() {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMsg(error.message);
+    }
+  }
+
+  async function load() {
+    const { data, error } = await supabase
+      .from('payments')
+      .select(`
+        *,
+        articles (
+          title
+        )
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+
+    setPayments(data || []);
+  }
+
+  async function approve(id: string) {
+    const { error } = await supabase
+      .from('payments')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pending');
+
+    if (error) {
+      setMsg(error.message);
+    }
+
+    await load();
+  }
+
+  if (!session) {
+    return (
+      <main className="container admin">
+        <h1>PayRead Admin</h1>
+
+        <p className="muted">
+          Sign in to review pending UPI payments.
+        </p>
+
+        <input
+          className="input"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <br />
+        <br />
+
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <br />
+        <br />
+
+        <button className="btn" onClick={login}>
+          Sign in
+        </button>
+
+        <p className="danger">{msg}</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container admin">
+      <div className="row">
+        <h1>Pending payments</h1>
+
+        <button
+          className="btn secondary"
+          onClick={() => supabase.auth.signOut()}
+        >
+          Sign out
+        </button>
+      </div>
+
+      <button className="btn" onClick={load}>
+        Refresh
+      </button>
+
+      <p className="muted small">
+        Only approve payments after you have independently confirmed the money
+        was received.
+      </p>
+
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Article</th>
+            <th>Amount</th>
+            <th>Reference</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {payments.map((p) => (
+            <tr key={p.id}>
+              <td>{p.article_id}</td>
+
+              <td>
+                ₹{(p.amount_paise / 100).toFixed(2)}
+              </td>
+
+              <td>{p.transaction_ref}</td>
+
+              <td>
+                <button
+                  className="btn"
+                  onClick={() => approve(p.id)}
+                >
+                  Approve
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
+  );
+}
