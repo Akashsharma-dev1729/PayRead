@@ -1,0 +1,28 @@
+# Enforce LF line endings for all text files
+* text=auto eol=lf
+
+# TypeScript / JavaScript
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.js   text eol=lf
+*.jsx  text eol=lf
+
+# Config and metadata
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.env* text eol=lf
+*.gitignore text eol=lf
+
+# Stylesheets
+*.css  text eol=lf
+*.scss text eol=lf
+
+# SQL files
+*.sql  text eol=lf
+
+# Lock files (keep exact formatting, no conversion)
+package-lock.json -text
+yarn.lock -text
+pnpm-lock.yaml -text
