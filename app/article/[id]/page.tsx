@@ -1,7 +1,168 @@
 'use client';
-import {useEffect,useState} from 'react';
-import {useParams} from 'next/navigation';
-import {supabase} from '@/lib/supabase';
-import {formatPrice} from '@/lib/payment';
-import type {Article} from '@/lib/types';
-export default function ArticlePage(){const {id}=useParams<{id:string}>();const [a,setA]=useState<Article|null>(null);const [allowed,setAllowed]=useState(false);useEffect(()=>{(async()=>{const {data}=await supabase.from('articles').select('*').eq('id',id).single();setA(data);const raw=localStorage.getItem('payread_access');const token=raw?JSON.parse(raw)[id]:null;if(token){const {data:p}=await supabase.from('payments').select('status').eq('article_id',id).eq('access_token',token).eq('status','completed').maybeSingle();setAllowed(!!p)}})()},[id]);if(!a)return <main className="container"><p className="muted">Loading…</p></main>;return <main className="container"><article className="article"><a className="muted" href="/">← Back</a><h1>{a.title}</h1>{allowed?<div className="article-content">{a.content}</div>:<div className="card"><h2>Article locked</h2><p className="muted">Purchase access from the home page for {formatPrice(a.price_paise)}.</p><a className="btn" href="/">Go back to PayRead</a></div>}</article></main>}
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import type { Payment } from '@/lib/types';
+
+export default function Admin() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [session, setSession] = useState<any>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    return supabase.auth.onAuthStateChange((_e, s) => {
+      setSession(s);
+    }).data.subscription.unsubscribe;
+  }, []);
+
+  async function login() {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setMsg(error.message);
+    }
+  }
+
+  async function load() {
+    const { data, error } = await supabase
+      .from('payments')
+      .select(`
+        *,
+        articles (
+          title
+        )
+      `)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      setMsg(error.message);
+      return;
+    }
+
+    setPayments(data || []);
+  }
+
+  async function approve(id: string) {
+    const { error } = await supabase
+      .from('payments')
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pending');
+
+    if (error) {
+      setMsg(error.message);
+    }
+
+    await load();
+  }
+
+  if (!session) {
+    return (
+      <main className="container admin">
+        <h1>PayRead Admin</h1>
+
+        <p className="muted">
+          Sign in to review pending UPI payments.
+        </p>
+
+        <input
+          className="input"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <br />
+        <br />
+
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <br />
+        <br />
+
+        <button className="btn" onClick={login}>
+          Sign in
+        </button>
+
+        <p className="danger">{msg}</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container admin">
+      <div className="row">
+        <h1>Pending payments</h1>
+
+        <button
+          className="btn secondary"
+          onClick={() => supabase.auth.signOut()}
+        >
+          Sign out
+        </button>
+      </div>
+
+      <button className="btn" onClick={load}>
+        Refresh
+      </button>
+
+      <p className="muted small">
+        Only approve payments after you have independently confirmed the money
+        was received.
+      </p>
+
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Article</th>
+            <th>Amount</th>
+            <th>Reference</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {payments.map((p) => (
+            <tr key={p.id}>
+              <td>{p.articles?.title || p.article_id}</td>
+
+              <td>
+                ₹{(p.amount_paise / 100).toFixed(2)}
+              </td>
+
+              <td>{p.transaction_ref}</td>
+
+              <td>
+                <button
+                  className="btn"
+                  onClick={() => approve(p.id)}
+                >
+                  Approve
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </main>
+  );
+}
