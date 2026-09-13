@@ -14,6 +14,25 @@ export default function PayModal({article,onClose,onUnlocked}:{article:Article;o
  return <div className="modalback" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="row"><h2>Unlock article</h2><button className="btn secondary" onClick={onClose}>×</button></div><p className="muted">{article.title}</p><p className="price">{formatPrice(article.price_paise)} one-time</p>
  {status==='starting'&&<p className="status">Preparing payment…</p>}
  {status==='failed'&&<><p className="status danger">{error||'Could not start payment.'}</p><button className="btn secondary" onClick={onClose}>Close</button></>}
- {status==='pending'&&<div className="center"><img className="qr" src={qr} alt="UPI payment QR code"/><p className="muted small">Scan with Paytm, PhonePe, Google Pay or another UPI app.</p><button className="btn" onClick={()=>{window.location.href=link}}>Open UPI app</button><button className="btn secondary" onClick={copy} style={{marginLeft:8}}>{copied?'Copied':'Copy payment link'}</button><p className="status small">Payment stays pending until it is confirmed by the site administrator. Do not rely on this page alone as proof of payment.</p></div>}
+ {status==='pending'&&<div className="center"><img className="qr" src={qr} alt="UPI payment QR code"/><p className="muted small">Scan with Paytm, PhonePe, Google Pay or another UPI app.</p><button
+  className="btn"
+  onClick={() => {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    if (isAndroid) {
+      const params = link.replace('upi://pay?', '');
+
+      const intentLink =
+        `intent://pay?${params}` +
+        `#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+
+      window.location.href = intentLink;
+    } else {
+      window.location.href = link;
+    }
+  }}
+>
+  Pay with UPI
+</button><button className="btn secondary" onClick={copy} style={{marginLeft:8}}>{copied?'Copied':'Copy payment link'}</button><p className="status small">Payment stays pending until it is confirmed by the site administrator. Do not rely on this page alone as proof of payment.</p></div>}
  {status==='success'&&<div className="center"><p className="success">✓ Payment confirmed</p><p>Unlocking your article…</p></div>}</div></div>
 }
