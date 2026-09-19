@@ -46,7 +46,19 @@ export default function Home() {
       </section>
 
       {loading ? (
-        <p className="muted">Loading articles…</p>
+        <section className="grid">
+          {[1, 2, 3].map((n) => (
+            <article className="card skeleton-card" key={n}>
+              <div className="skeleton skeleton-title"></div>
+              <div className="skeleton skeleton-text"></div>
+              <div className="skeleton skeleton-text short"></div>
+              <div className="row" style={{ marginTop: '20px' }}>
+                <div className="skeleton skeleton-price"></div>
+                <div className="skeleton skeleton-btn"></div>
+              </div>
+            </article>
+          ))}
+        </section>
       ) : articles.length === 0 ? (
         <p className="muted">No published articles yet.</p>
       ) : (
