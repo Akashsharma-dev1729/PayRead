@@ -19,3 +19,4 @@
 2. Register the intended Auth user in `public.admin_users` using the SQL snippet in README.
 3. Set the Vercel Supabase URL and publishable/anon key correctly.
 4. Redeploy Vercel after changing `NEXT_PUBLIC_*` variables.
+- Fixed the Vercel/Next.js TypeScript build failure caused by Supabase inferring `articles(title)` as an array relation while the UI typed it as a single object. The admin payment loader now fetches payments and article titles separately and combines them explicitly, removing the fragile nested-relation cast.

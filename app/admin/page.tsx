@@ -11,9 +11,14 @@ type AdminPayment = {
   status: string;
   transaction_ref: string;
   created_at: string;
-  articles?: {
-    title: string;
-  } | null;
+  article_title: string | null;
+};
+
+type PaymentRow = Omit<AdminPayment, 'article_title'>;
+
+type ArticleTitleRow = {
+  id: string;
+  title: string;
 };
 
 function friendlyNetworkError(error: unknown) {
@@ -126,26 +131,47 @@ export default function Admin() {
     if (!supabase || !isAdmin) return;
 
     setMsg('');
-    const { data, error } = await supabase
+    const { data: paymentData, error: paymentError } = await supabase
       .from('payments')
-      .select(`
-        id,
-        article_id,
-        amount_paise,
-        status,
-        transaction_ref,
-        created_at,
-        articles ( title )
-      `)
+      .select('id, article_id, amount_paise, status, transaction_ref, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      setMsg(error.message);
+    if (paymentError) {
+      setMsg(paymentError.message);
       return;
     }
 
-    setPayments((data || []) as AdminPayment[]);
+    const paymentRows = (paymentData || []) as PaymentRow[];
+    const articleIds = [...new Set(paymentRows.map((payment) => payment.article_id))];
+
+    let articleTitleById = new Map<string, string>();
+
+    if (articleIds.length > 0) {
+      const { data: articleData, error: articleError } = await supabase
+        .from('articles')
+        .select('id, title')
+        .in('id', articleIds);
+
+      if (articleError) {
+        setMsg(articleError.message);
+        return;
+      }
+
+      articleTitleById = new Map(
+        ((articleData || []) as ArticleTitleRow[]).map((article) => [
+          article.id,
+          article.title,
+        ]),
+      );
+    }
+
+    setPayments(
+      paymentRows.map((payment) => ({
+        ...payment,
+        article_title: articleTitleById.get(payment.article_id) ?? null,
+      })),
+    );
   }
 
   async function approve(id: string) {
@@ -278,7 +304,7 @@ export default function Admin() {
         <tbody>
           {payments.map((p) => (
             <tr key={p.id}>
-              <td>{p.articles?.title || p.article_id}</td>
+              <td>{p.article_title || p.article_id}</td>
               <td>₹{(p.amount_paise / 100).toFixed(2)}</td>
               <td>{p.transaction_ref}</td>
               <td>
