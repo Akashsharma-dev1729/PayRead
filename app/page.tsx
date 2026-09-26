@@ -18,17 +18,39 @@ export default function Home() {
       return;
     }
 
-    supabase
-      .rpc('list_published_articles')
-      .then(({ data, error: queryError }) => {
-        if (queryError) setError(queryError.message);
+    const client = supabase;
+    let cancelled = false;
+
+    const loadArticles = async () => {
+      try {
+        const { data, error: queryError } = await client.rpc('list_published_articles');
+
+        if (cancelled) return;
+
+        if (queryError) {
+          setError(queryError.message);
+          return;
+        }
+
         setArticles((data || []) as Article[]);
-        setLoading(false);
-      })
-      .catch((queryError) => {
-        setError(queryError instanceof Error ? queryError.message : 'Unable to reach Supabase.');
-        setLoading(false);
-      });
+      } catch (queryError) {
+        if (!cancelled) {
+          setError(
+            queryError instanceof Error
+              ? queryError.message
+              : 'Unable to reach Supabase.',
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadArticles();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

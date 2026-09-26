@@ -13,6 +13,8 @@ export function buildUpiLink(
     pn: MERCHANT_NAME,
     am: (amountPaise / 100).toFixed(2),
     cu: 'INR',
+    tn: `PayRead: ${articleTitle.slice(0, 40)}`,
+    tr: transactionRef,
   });
 
   return `upi://pay?${params.toString()}`;

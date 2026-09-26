@@ -231,6 +231,15 @@ grant select, insert, update, delete on table public.articles to authenticated;
 grant select on table public.payments to authenticated;
 grant update (status, completed_at) on table public.payments to authenticated;
 
+-- PostgreSQL grants EXECUTE on new functions to PUBLIC by default. Remove that
+-- blanket permission, then grant only the roles each browser flow needs.
+revoke execute on function public.list_published_articles() from public;
+revoke execute on function public.get_article_preview(uuid) from public;
+revoke execute on function public.create_payment(uuid, text, uuid) from public;
+revoke execute on function public.get_payment_status(uuid) from public;
+revoke execute on function public.get_article_content(uuid, uuid) from public;
+revoke execute on function public.is_admin() from public;
+
 grant execute on function public.list_published_articles() to anon, authenticated;
 grant execute on function public.get_article_preview(uuid) to anon, authenticated;
 grant execute on function public.create_payment(uuid, text, uuid) to anon, authenticated;

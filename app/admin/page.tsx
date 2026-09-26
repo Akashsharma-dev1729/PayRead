@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 
 type AdminPayment = {
@@ -69,23 +70,32 @@ export default function Admin() {
     }
 
     const client = supabase;
+    let cancelled = false;
 
-    client.auth
-      .getSession()
-      .then(({ data, error }) => {
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (cancelled) return;
         if (error) setMsg(error.message);
         setSession(data.session);
-      })
-      .catch((error) => {
-        setMsg(friendlyNetworkError(error));
-        setCheckingRole(false);
-      });
+      } catch (error) {
+        if (!cancelled) {
+          setMsg(friendlyNetworkError(error));
+          setCheckingRole(false);
+        }
+      }
+    };
 
-    const { data } = client.auth.onAuthStateChange((_event, nextSession) => {
+    void restoreSession();
+
+    const { data } = client.auth.onAuthStateChange((_event: AuthChangeEvent, nextSession: Session | null) => {
       setSession(nextSession);
     });
 
-    return () => data.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -223,7 +233,7 @@ export default function Admin() {
               autoComplete="email"
               placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               disabled={signingIn || !!supabaseConfigError}
             />
 
@@ -236,8 +246,8 @@ export default function Admin() {
               autoComplete="current-password"
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') void login();
               }}
               disabled={signingIn || !!supabaseConfigError}

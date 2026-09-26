@@ -20,3 +20,12 @@
 3. Set the Vercel Supabase URL and publishable/anon key correctly.
 4. Redeploy Vercel after changing `NEXT_PUBLIC_*` variables.
 - Fixed the Vercel/Next.js TypeScript build failure caused by Supabase inferring `articles(title)` as an array relation while the UI typed it as a single object. The admin payment loader now fetches payments and article titles separately and combines them explicitly, removing the fragile nested-relation cast.
+
+## V3 build correction
+
+- Replaced Supabase query-builder `.then(...).catch(...)` usage with guarded `async/await`; Supabase builders are `PromiseLike` and do not expose native `.catch()` in their TypeScript type.
+- Applied the same async/await pattern to admin session restoration and article loading to avoid the same class of build/runtime failure elsewhere.
+- Removed the fragile nested Supabase relation cast from the admin payments page; payments and article titles are queried separately and combined in TypeScript.
+- Restored UPI transaction reference/note parameters (`tr` and `tn`) in generated payment links.
+- Restricted PostgreSQL function EXECUTE permissions explicitly instead of relying on the default PUBLIC function privilege.
+- Ran a strict TypeScript semantic pass over all local app/components/lib source files after the fixes.

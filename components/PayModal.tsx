@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import QRCode from 'qrcode';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 import { buildUpiLink, formatPrice, newToken, newTransactionRef, saveAccess } from '@/lib/payment';
@@ -24,17 +25,18 @@ export default function PayModal({
   const link = buildUpiLink(article.price_paise, ref, article.title);
 
   useEffect(() => {
+    const client = supabase;
     let cancelled = false;
 
     (async () => {
-      if (!supabase) {
+      if (!client) {
         setError(supabaseConfigError || 'Supabase is not configured.');
         setStatus('failed');
         return;
       }
 
       try {
-        const { error: createError } = await supabase.rpc('create_payment', {
+        const { error: createError } = await client.rpc('create_payment', {
           p_article_id: article.id,
           p_transaction_ref: ref,
           p_access_token: token,
@@ -92,7 +94,7 @@ export default function PayModal({
 
   return (
     <div className="modalback" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
         <div className="row">
           <h2>Unlock article</h2>
           <button className="btn secondary" onClick={onClose}>×</button>
