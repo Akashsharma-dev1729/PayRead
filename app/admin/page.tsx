@@ -48,19 +48,25 @@ export default function Admin() {
     }
 
     setCheckingRole(true);
-    const { data, error } = await supabase.rpc('is_admin');
 
-    if (error) {
-      setIsAdmin(false);
-      setMsg(`Admin authorization check failed: ${error.message}`);
-    } else {
-      setIsAdmin(data === true);
-      if (data !== true) {
-        setMsg('This account is authenticated but is not registered as a PayRead admin.');
+    try {
+      const { data, error } = await supabase.rpc('is_admin');
+
+      if (error) {
+        setIsAdmin(false);
+        setMsg(`Admin authorization check failed: ${error.message}`);
+      } else {
+        setIsAdmin(data === true);
+        if (data !== true) {
+          setMsg('This account is authenticated but is not registered as a PayRead admin.');
+        }
       }
+    } catch (error) {
+      setIsAdmin(false);
+      setMsg(friendlyNetworkError(error));
+    } finally {
+      setCheckingRole(false);
     }
-
-    setCheckingRole(false);
   }
 
   useEffect(() => {
@@ -141,73 +147,94 @@ export default function Admin() {
     if (!supabase || !isAdmin) return;
 
     setMsg('');
-    const { data: paymentData, error: paymentError } = await supabase
-      .from('payments')
-      .select('id, article_id, amount_paise, status, transaction_ref, created_at')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
 
-    if (paymentError) {
-      setMsg(paymentError.message);
-      return;
-    }
+    try {
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments')
+        .select('id, article_id, amount_paise, status, transaction_ref, created_at')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
 
-    const paymentRows = (paymentData || []) as PaymentRow[];
-    const articleIds = [...new Set(paymentRows.map((payment) => payment.article_id))];
-
-    let articleTitleById = new Map<string, string>();
-
-    if (articleIds.length > 0) {
-      const { data: articleData, error: articleError } = await supabase
-        .from('articles')
-        .select('id, title')
-        .in('id', articleIds);
-
-      if (articleError) {
-        setMsg(articleError.message);
+      if (paymentError) {
+        setMsg(paymentError.message);
         return;
       }
 
-      articleTitleById = new Map(
-        ((articleData || []) as ArticleTitleRow[]).map((article) => [
-          article.id,
-          article.title,
-        ]),
-      );
-    }
+      const paymentRows = (paymentData || []) as PaymentRow[];
+      const articleIds = [...new Set(paymentRows.map((payment) => payment.article_id))];
 
-    setPayments(
-      paymentRows.map((payment) => ({
-        ...payment,
-        article_title: articleTitleById.get(payment.article_id) ?? null,
-      })),
-    );
+      let articleTitleById = new Map<string, string>();
+
+      if (articleIds.length > 0) {
+        const { data: articleData, error: articleError } = await supabase
+          .from('articles')
+          .select('id, title')
+          .in('id', articleIds);
+
+        if (articleError) {
+          setMsg(articleError.message);
+          return;
+        }
+
+        articleTitleById = new Map(
+          ((articleData || []) as ArticleTitleRow[]).map((article) => [
+            article.id,
+            article.title,
+          ]),
+        );
+      }
+
+      setPayments(
+        paymentRows.map((payment) => ({
+          ...payment,
+          article_title: articleTitleById.get(payment.article_id) ?? null,
+        })),
+      );
+    } catch (error) {
+      setMsg(friendlyNetworkError(error));
+    }
   }
 
   async function approve(id: string) {
     if (!supabase || !isAdmin) return;
 
     setMsg('');
-    const { error } = await supabase
-      .from('payments')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('status', 'pending');
 
-    if (error) {
-      setMsg(error.message);
-      return;
+    try {
+      const { error } = await supabase
+        .from('payments')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('status', 'pending');
+
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+
+      await load();
+    } catch (error) {
+      setMsg(friendlyNetworkError(error));
     }
-
-    await load();
   }
 
   async function signOut() {
     if (!supabase) return;
-    await supabase.auth.signOut();
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setMsg(error.message);
+        return;
+      }
+    } catch (error) {
+      setMsg(friendlyNetworkError(error));
+      return;
+    }
+
     setSession(null);
     setIsAdmin(false);
     setPayments([]);

@@ -29,3 +29,11 @@
 - Restored UPI transaction reference/note parameters (`tr` and `tn`) in generated payment links.
 - Restricted PostgreSQL function EXECUTE permissions explicitly instead of relying on the default PUBLIC function privilege.
 - Ran a strict TypeScript semantic pass over all local app/components/lib source files after the fixes.
+
+## v4 runtime hardening
+- Missing Supabase configuration now renders a deployment setup card instead of a raw one-line error.
+- Missing UPI configuration no longer crashes the payment modal during render.
+- Admin role checks, payment loading, approval, and sign-out now catch network failures.
+- Payment status polling is serialized (no overlapping interval requests) and survives temporary network errors.
+- Corrupt `payread_access` localStorage no longer breaks saving newly purchased access.
+- Added a route error boundary for unexpected runtime failures.

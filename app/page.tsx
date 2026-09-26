@@ -71,9 +71,20 @@ export default function Home() {
         <p className="muted">Pay once for the article you actually want to read.</p>
       </section>
 
-      {error && <p className="danger">{error}</p>}
-
-      {loading ? (
+      {supabaseConfigError ? (
+        <section className="card config-card">
+          <h2>PayRead is not connected yet</h2>
+          <p className="muted">
+            Supabase deployment configuration is missing. Add the required environment variables in Vercel, then redeploy this project.
+          </p>
+          <p className="danger small">{supabaseConfigError}</p>
+        </section>
+      ) : error ? (
+        <section className="card">
+          <h2>Unable to load articles</h2>
+          <p className="danger">{error}</p>
+        </section>
+      ) : loading ? (
         <section className="grid">
           {[1, 2, 3].map((n) => (
             <article className="card skeleton-card" key={n}>
@@ -87,7 +98,7 @@ export default function Home() {
             </article>
           ))}
         </section>
-      ) : articles.length === 0 && !error ? (
+      ) : articles.length === 0 ? (
         <p className="muted">No published articles yet.</p>
       ) : (
         <section className="grid">
