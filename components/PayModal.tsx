@@ -1,38 +1,205 @@
 'use client';
-import {useEffect,useState} from 'react';
+
+import { useEffect, useState } from 'react';
+import type { MouseEvent } from 'react';
 import QRCode from 'qrcode';
-import {supabase} from '@/lib/supabase';
-import {buildUpiLink,formatPrice,newToken,newTransactionRef,saveAccess} from '@/lib/payment';
-import type {Article} from '@/lib/types';
+import { supabase, supabaseConfigError } from '@/lib/supabase';
+import {
+  buildUpiLink,
+  formatPrice,
+  newToken,
+  newTransactionRef,
+  paymentConfigError,
+  saveAccess,
+} from '@/lib/payment';
+import type { Article } from '@/lib/types';
 
-export default function PayModal({article,onClose,onUnlocked}:{article:Article;onClose:()=>void;onUnlocked:()=>void}){
- const [qr,setQr]=useState(''); const [token]=useState(newToken); const [ref]=useState(newTransactionRef); const [status,setStatus]=useState<'starting'|'pending'|'success'|'failed'>('starting'); const [error,setError]=useState(''); const [copied,setCopied]=useState(false);
- const link=buildUpiLink(article.price_paise,ref,article.title);
- useEffect(()=>{let cancelled=false;(async()=>{const {error}=await supabase.from('payments').insert({article_id:article.id,amount_paise:article.price_paise,status:'pending',transaction_ref:ref,access_token:token});if(error){setError(error.message);setStatus('failed');return}const data=await QRCode.toDataURL(link,{width:230,margin:1});if(!cancelled){setQr(data);setStatus('pending')}})();return()=>{cancelled=true}},[article.id,article.price_paise,link,ref,token]);
- useEffect(()=>{if(status!=='pending')return;const id=setInterval(async()=>{const {data}=await supabase.from('payments').select('status').eq('access_token',token).maybeSingle();if(data?.status==='completed'){clearInterval(id);saveAccess(article.id,token);setStatus('success');setTimeout(onUnlocked,700)}},3000);return()=>clearInterval(id)},[status,token,article.id,onUnlocked]);
- const copy=async()=>{await navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),1600)};
- return <div className="modalback" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}><div className="row"><h2>Unlock article</h2><button className="btn secondary" onClick={onClose}>×</button></div><p className="muted">{article.title}</p><p className="price">{formatPrice(article.price_paise)} one-time</p>
- {status==='starting'&&<p className="status">Preparing payment…</p>}
- {status==='failed'&&<><p className="status danger">{error||'Could not start payment.'}</p><button className="btn secondary" onClick={onClose}>Close</button></>}
- {status==='pending'&&<div className="center"><img className="qr" src={qr} alt="UPI payment QR code"/><p className="muted small">Scan with Paytm, PhonePe, Google Pay or another UPI app.</p><button
-  className="btn"
-  onClick={() => {
-    const isAndroid = /Android/i.test(navigator.userAgent);
+function readableError(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
-    if (isAndroid) {
-      const params = link.replace('upi://pay?', '');
+export default function PayModal({
+  article,
+  onClose,
+  onUnlocked,
+}: {
+  article: Article;
+  onClose: () => void;
+  onUnlocked: () => void;
+}) {
+  const [qr, setQr] = useState('');
+  const [token] = useState(newToken);
+  const [ref] = useState(newTransactionRef);
+  const [link, setLink] = useState('');
+  const [status, setStatus] = useState<'starting' | 'pending' | 'success' | 'failed'>('starting');
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
-      const intentLink =
-        `intent://pay?${params}` +
-        `#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+  useEffect(() => {
+    const client = supabase;
+    let cancelled = false;
 
-      window.location.href = intentLink;
-    } else {
-      window.location.href = link;
+    const startPayment = async () => {
+      if (!client) {
+        setError(supabaseConfigError || 'Supabase is not configured.');
+        setStatus('failed');
+        return;
+      }
+
+      if (paymentConfigError) {
+        setError(paymentConfigError);
+        setStatus('failed');
+        return;
+      }
+
+      try {
+        const paymentLink = buildUpiLink(article.price_paise, ref, article.title);
+
+        const { error: createError } = await client.rpc('create_payment', {
+          p_article_id: article.id,
+          p_transaction_ref: ref,
+          p_access_token: token,
+        });
+
+        if (cancelled) return;
+
+        if (createError) {
+          setError(createError.message);
+          setStatus('failed');
+          return;
+        }
+
+        const qrData = await QRCode.toDataURL(paymentLink, { width: 230, margin: 1 });
+        if (cancelled) return;
+
+        setLink(paymentLink);
+        setQr(qrData);
+        setStatus('pending');
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(readableError(requestError, 'Could not start payment.'));
+          setStatus('failed');
+        }
+      }
+    };
+
+    void startPayment();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [article.id, article.price_paise, article.title, ref, token]);
+
+  useEffect(() => {
+    if (status !== 'pending' || !supabase) return;
+
+    const client = supabase;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      try {
+        const { data, error: statusError } = await client.rpc('get_payment_status', {
+          p_access_token: token,
+        });
+
+        if (cancelled) return;
+
+        if (!statusError && data === 'completed') {
+          saveAccess(article.id, token);
+          setStatus('success');
+          timer = setTimeout(() => {
+            if (!cancelled) onUnlocked();
+          }, 700);
+          return;
+        }
+
+        if (!statusError && data === 'failed') {
+          setError('This payment was marked as failed.');
+          setStatus('failed');
+          return;
+        }
+      } catch {
+        // A temporary network failure should not kill the payment session.
+        // The next poll can succeed when connectivity returns.
+      }
+
+      if (!cancelled) timer = setTimeout(() => void poll(), 3000);
+    };
+
+    timer = setTimeout(() => void poll(), 1000);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, token, article.id, onUnlocked]);
+
+  const copy = async () => {
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setError('Could not copy the payment link. Please use the QR code instead.');
     }
-  }}
->
-  Pay with UPI
-</button><button className="btn secondary" onClick={copy} style={{marginLeft:8}}>{copied?'Copied':'Copy payment link'}</button><p className="status small">Payment stays pending until it is confirmed by the site administrator. Do not rely on this page alone as proof of payment.</p></div>}
- {status==='success'&&<div className="center"><p className="success">✓ Payment confirmed</p><p>Unlocking your article…</p></div>}</div></div>
+  };
+
+  return (
+    <div className="modalback" onClick={onClose}>
+      <div className="modal" onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
+        <div className="row">
+          <h2>Unlock article</h2>
+          <button className="btn secondary" onClick={onClose} aria-label="Close payment dialog">×</button>
+        </div>
+        <p className="muted">{article.title}</p>
+        <p className="price">{formatPrice(article.price_paise)} one-time</p>
+
+        {status === 'starting' && <p className="status">Preparing payment…</p>}
+        {status === 'failed' && (
+          <>
+            <p className="status danger">{error || 'Could not start payment.'}</p>
+            <button className="btn secondary" onClick={onClose}>Close</button>
+          </>
+        )}
+        {status === 'pending' && (
+          <div className="center">
+            <img className="qr" src={qr} alt="UPI payment QR code" />
+            <p className="muted small">Scan with Paytm, PhonePe, Google Pay or another UPI app.</p>
+            <button
+              className="btn"
+              disabled={!link}
+              onClick={() => {
+                if (!link) return;
+                const isAndroid = /Android/i.test(navigator.userAgent);
+                if (isAndroid) {
+                  const params = link.replace('upi://pay?', '');
+                  window.location.href = `intent://pay?${params}#Intent;scheme=upi;action=android.intent.action.VIEW;end`;
+                } else {
+                  window.location.href = link;
+                }
+              }}
+            >
+              Pay with UPI
+            </button>
+            <button className="btn secondary" onClick={() => void copy()} style={{ marginLeft: 8 }} disabled={!link}>
+              {copied ? 'Copied' : 'Copy payment link'}
+            </button>
+            <p className="status small">
+              Payment stays pending until it is confirmed by the site administrator.
+            </p>
+            {error && <p className="danger small">{error}</p>}
+          </div>
+        )}
+        {status === 'success' && (
+          <div className="center">
+            <p className="success">✓ Payment confirmed</p>
+            <p>Unlocking your article…</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
