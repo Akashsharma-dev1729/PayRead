@@ -16,11 +16,11 @@ export function persist(key: string, id: string, value: unknown) {
   try { localStorage.setItem(key, JSON.stringify(record)); }
   catch { throw new Error('Browser storage is unavailable. Enable site storage before paying.'); }
 }
-export type PaymentSession = { token: string; ref: string };
-export function paymentSession(id: string): PaymentSession {
+export type PaymentSession = { token: string; ref: string; method?: 'manual_upi' | 'razorpay' };
+export function paymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
   const existing = readRecord('payread_pending')[id] as Partial<PaymentSession> | undefined;
   if (existing && typeof existing.token === 'string' && UUID.test(existing.token) && typeof existing.ref === 'string' && /^PR[0-9A-Z]{8,62}$/.test(existing.ref)) return existing as PaymentSession;
-  const session = { token: crypto.randomUUID(), ref: `PR${crypto.randomUUID().replaceAll('-', '').toUpperCase()}` };
+  const session = { method, token: crypto.randomUUID(), ref: `PR${crypto.randomUUID().replaceAll('-', '').toUpperCase()}` };
   persist('payread_pending', id, session);
   return session;
 }

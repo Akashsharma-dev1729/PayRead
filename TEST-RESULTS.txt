@@ -1,3 +1,5 @@
+Razorpay integration checks — 2 October 2026
+
 npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 
 > payread-basic@1.0.0 check
@@ -6,37 +8,54 @@ npm warn Unknown env config "http-proxy". This will stop working in the next maj
 npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 
 > payread-basic@1.0.0 typecheck
-> tsc --noEmit
+> next typegen && tsc --noEmit
 
+Generating route types...
+✓ Route types generated successfully
 npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 
 > payread-basic@1.0.0 test
 > node --import tsx --test tests/*.test.ts
 
-✔ admin loads automatically, detects review conflict, and discards role check after signout (663.435926ms)
+✔ admin loads automatically, detects review conflict, and discards role check after signout (730.15805ms)
 ▶ SQL migration, actual PostgreSQL permissions and purchase lifecycle
-  ✔ anonymous cannot read content or payment tokens directly (13.383156ms)
-  ✔ creation is idempotent and database-priced, conflicting identities rejected (12.172715ms)
-  ✔ pending and wrong-token requests cannot unlock content (3.052011ms)
-  ✔ ordinary signed-in account cannot approve or enumerate purchases (4.22951ms)
-  ✔ admin approval is atomic, server-timestamped, and does not repeat (4.762343ms)
-  ✔ completed token unlocks only its article (2.681249ms)
-  ✔ unknown legacy permissive policies are removed on upgrade (14.180507ms)
-✔ SQL migration, actual PostgreSQL permissions and purchase lifecycle (2922.339578ms)
-✔ payment dialog Strict Mode, authoritative amount, reopen, keyboard and completed purchase (703.19314ms)
-✔ pending identity survives reopening (3.149109ms)
-✔ access readers tolerate corrupt and malformed storage (0.435358ms)
-✔ confirmed access is recoverable (0.399402ms)
-✔ blocked storage stops checkout before any payment can be made (1.900528ms)
-✔ Supabase URL must be a project origin, never a REST path (136.800397ms)
-ℹ tests 15
+  ✔ anonymous cannot read content or payment tokens directly (9.588031ms)
+  ✔ creation is idempotent and database-priced, conflicting identities rejected (8.968163ms)
+  ✔ pending and wrong-token requests cannot unlock content (3.021761ms)
+  ✔ ordinary signed-in account cannot approve or enumerate purchases (4.422222ms)
+  ✔ admin approval is atomic, server-timestamped, and does not repeat (4.214723ms)
+  ✔ completed token unlocks only its article (2.308001ms)
+  ✔ unknown legacy permissive policies are removed on upgrade (14.801654ms)
+✔ SQL migration, actual PostgreSQL permissions and purchase lifecycle (3590.323048ms)
+✔ payment dialog Strict Mode, authoritative amount, reopen, keyboard and completed purchase (755.557824ms)
+✔ checkout cancellation and unverified callback never unlock; server-confirmed payment does (858.062696ms)
+▶ Razorpay service with real SQL and a simulated gateway
+  ✔ server price wins and retries reuse the saved order (33.234204ms)
+  ✔ anonymous cannot create/complete/revoke gateway records directly (5.320932ms)
+  ✔ manual admin cannot approve gateway purchases (5.005948ms)
+  ✔ forged signature and substituted order do not grant access (4.462628ms)
+  ✔ authorized-only and wrong-amount payments do not unlock (4.655165ms)
+  ✔ captured verified payment unlocks exactly once (12.277465ms)
+  ✔ invalid or mutated raw webhook is rejected (0.595312ms)
+  ✔ duplicate webhook delivery is idempotent (11.982323ms)
+  ✔ refund revokes access; late captured delivery cannot restore it (10.932757ms)
+  ✔ webhook confirms a second purchase even without browser callback (7.597672ms)
+  ✔ uncertain order creation never blindly creates a second order (4.243687ms)
+  ✔ signature validation rejects missing and malformed values (0.188809ms)
+✔ Razorpay service with real SQL and a simulated gateway (3600.222399ms)
+✔ pending identity survives reopening (2.992658ms)
+✔ access readers tolerate corrupt and malformed storage (0.367336ms)
+✔ confirmed access is recoverable (0.417096ms)
+✔ blocked storage stops checkout before any payment can be made (1.505526ms)
+✔ Supabase URL must be a project origin, never a REST path (208.45147ms)
+ℹ tests 29
 ℹ suites 0
-ℹ pass 15
+ℹ pass 29
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3422.666681
+ℹ duration_ms 4320.367579
 npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
 
 > payread-basic@1.0.0 build
@@ -45,22 +64,25 @@ npm warn Unknown env config "http-proxy". This will stop working in the next maj
    ▲ Next.js 15.5.27
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 2.8s
+ ✓ Compiled successfully in 5.8s
    Linting and checking validity of types ...
    Collecting page data ...
-   Generating static pages (0/5) ...
-   Generating static pages (1/5) 
-   Generating static pages (2/5) 
-   Generating static pages (3/5) 
- ✓ Generating static pages (5/5)
+   Generating static pages (0/8) ...
+   Generating static pages (2/8) 
+   Generating static pages (4/8) 
+   Generating static pages (6/8) 
+ ✓ Generating static pages (8/8)
    Finalizing page optimization ...
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                    12.5 kB         179 kB
+┌ ○ /                                    14.1 kB         181 kB
 ├ ○ /_not-found                            995 B         104 kB
-├ ○ /admin                               2.46 kB         169 kB
-└ ƒ /article/[id]                        2.01 kB         169 kB
+├ ○ /admin                               2.52 kB         170 kB
+├ ƒ /api/razorpay/order                    131 B         103 kB
+├ ƒ /api/razorpay/verify                   131 B         103 kB
+├ ƒ /api/razorpay/webhook                  131 B         103 kB
+└ ƒ /article/[id]                        2.06 kB         169 kB
 + First Load JS shared by all             103 kB
   ├ chunks/255-ce8c7c75002f810b.js       46.5 kB
   ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
@@ -71,4 +93,48 @@ Route (app)                                 Size  First Load JS
 ƒ  (Dynamic)  server-rendered on demand
 
 
-Additional final check: npm run typecheck (next typegen && tsc --noEmit) passed.
+Final production build after request-origin correction:
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> payread-basic@1.0.0 build
+> next build
+
+   ▲ Next.js 15.5.27
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 3.0s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/8) ...
+   Generating static pages (2/8) 
+   Generating static pages (4/8) 
+   Generating static pages (6/8) 
+ ✓ Generating static pages (8/8)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    14.1 kB         181 kB
+├ ○ /_not-found                            995 B         104 kB
+├ ○ /admin                               2.52 kB         170 kB
+├ ƒ /api/razorpay/order                    131 B         103 kB
+├ ƒ /api/razorpay/verify                   131 B         103 kB
+├ ƒ /api/razorpay/webhook                  131 B         103 kB
+└ ƒ /article/[id]                        2.06 kB         169 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/255-ce8c7c75002f810b.js       46.5 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ other shared chunks (total)           1.9 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+Production endpoint smoke tests:
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> payread-basic@1.0.0 test:http
+> node tests/http-smoke.mjs
+
+PASS: 6 HTTP checks (cross-origin, malformed JSON, invalid identity, body limit, invalid verification, forged webhook/no-store)

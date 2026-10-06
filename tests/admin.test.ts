@@ -20,7 +20,7 @@ test('admin loads automatically, detects review conflict, and discards role chec
   if(name==='is_admin')return slow ? new Promise(resolve=>{resolveRole=resolve}) : {data:true,error:null};
   reviews.push(args);return {data:false,error:null};
  }});
- Object.defineProperty(supabase,'from',{value:(table:string)=>({select:()=> table==='payments'?{eq:()=>({order:async()=>({data:[{id:'p1',article_id:'a1',amount_paise:100,transaction_ref:'PR123',status:'pending'}],error:null})})}:{in:async()=>({data:[{id:'a1',title:'Paid article'}],error:null})}})});
+ Object.defineProperty(supabase,'from',{value:(table:string)=>({select:()=> table==='payments'?{eq:()=>({eq:()=>({order:async()=>({data:[{id:'p1',article_id:'a1',amount_paise:100,transaction_ref:'PR123',status:'pending'}],error:null})})})}:{in:async()=>({data:[{id:'a1',title:'Paid article'}],error:null})}})});
  const view=render(React.createElement(Admin));
  await waitFor(()=>assert.ok(view.getByText('Paid article')));
  fireEvent.click(view.getByText('Approve'));

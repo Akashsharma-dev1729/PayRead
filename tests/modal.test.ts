@@ -10,7 +10,7 @@ test('payment dialog Strict Mode, authoritative amount, reopen, keyboard and com
  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='test-public-key';
  process.env.NEXT_PUBLIC_UPI_ID='test@upi';
  const {supabase} = await import('../lib/supabase');
- const {default:Modal}=await import('../components/PayModal');
+ const {default:Modal}=await import('../components/ManualPayModal');
  const {render,waitFor,fireEvent,cleanup}=await import('@testing-library/react');
  const article={id:'10000000-0000-4000-8000-000000000001',title:'Article',excerpt:'',price_paise:999,published:true};
  const calls: {name:string;args:Record<string,string>}[]=[];

@@ -1,8 +1,12 @@
-# PayRead — corrected manual UPI edition
+# PayRead — Razorpay + manual UPI
 
-Next.js + Supabase + Vercel. Readers pay once per article. An explicitly authorized administrator verifies receipt before approving access. This release does not introduce Razorpay or automated payment verification.
+Next.js + Supabase + Vercel. Readers pay once per article. An explicitly authorized administrator verifies receipt before approving access. Razorpay now offers automatic confirmation. Start with **RAZORPAY-SETUP.md** for the new migration, server-only environment variables, and webhook setup.
 
-## Upgrade an existing deployment
+## Previous manual-UPI setup (reference)
+
+If you already completed the earlier repair, follow RAZORPAY-SETUP.md instead of rerunning the old migration.
+
+## Original repair steps
 
 1. Back up your Supabase database and test on a staging copy first.
 2. Run `supabase/migrations/202610010001_payread_repair.sql` in Supabase SQL Editor. Run the entire file: it is transactional and reloads the API schema cache. It preserves existing articles/payments/admin memberships and replaces policies/grants on those three PayRead-owned tables. Reconcile any custom policies before applying.
@@ -48,7 +52,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-`npm run check` runs typecheck, tests and build. Tests are local; SQL tests use PGlite with a minimal Supabase Auth fixture, UI tests use jsdom and mocked RPC responses. No tests contact your production database or send payments.
+`npm run check` runs typecheck, tests and build. After building, `npm run test:http` checks the payment HTTP rejection paths using dummy credentials. Tests are local; SQL tests use PGlite with a minimal Supabase Auth fixture, UI tests use jsdom and mocked RPC responses. No tests contact your production database or send payments.
 
 ## Purchase recovery
 

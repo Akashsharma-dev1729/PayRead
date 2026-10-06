@@ -172,6 +172,7 @@ export default function Admin() {
         .from('payments')
         .select('id, article_id, amount_paise, status, transaction_ref, created_at')
         .eq('status', 'pending')
+        .eq('provider', 'manual_upi')
         .order('created_at', { ascending: false });
 
       if (generation !== authGeneration.current || request !== loadGeneration.current) return;
@@ -329,6 +330,7 @@ export default function Admin() {
     <main className="container admin">
       <div className="row">
         <h1>Pending payments</h1>
+        <p className="muted small">Manual UPI payments. Razorpay payments are verified automatically.</p>
 
         <button className="btn secondary" onClick={() => void signOut()}>
           Sign out
