@@ -1,0 +1,10 @@
+## Mini regression
+
+- 32 tests passed (31 database/payment/admin/storage tests plus one free-reading UI test).
+- npm run typecheck passed.
+- npm run build passed.
+- Database checks execute with embedded PostgreSQL (PGlite); browser component checks use jsdom; Razorpay requests are simulated.
+- Verified anonymous free access, paid/draft protection, ₹100 Razorpay reservation, existing paid access, and idempotent article seeding.
+- No live Supabase migration, Vercel deployment, or real payment was performed here.
+
+Changed production files: app/page.tsx, app/article/[id]/page.tsx, supabase/schema.sql, and the new SQL migration. Checkout, webhook, payment APIs, admin code, and dependencies are unchanged.

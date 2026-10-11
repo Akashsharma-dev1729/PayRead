@@ -9,7 +9,7 @@ create table if not exists public.articles (
   title text not null,
   excerpt text not null default '',
   content text not null,
-  price_paise integer not null check (price_paise > 0),
+  price_paise integer not null check (price_paise >= 0),
   published boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -204,7 +204,7 @@ as $$
   limit 1;
 $$;
 
--- Paid content is returned only when the supplied token belongs to a completed
+-- Published free content needs no token. Paid content requires a completed
 -- payment for this exact article.
 create or replace function public.get_article_content(
   p_article_id uuid,
@@ -228,13 +228,13 @@ as $$
   from public.articles a
   where a.id = p_article_id
     and a.published = true
-    and exists (
+    and (a.price_paise = 0 or exists (
       select 1
       from public.payments p
       where p.article_id = a.id
         and p.access_token = p_access_token
         and p.status = 'completed'
-    )
+    ))
   limit 1;
 $$;
 

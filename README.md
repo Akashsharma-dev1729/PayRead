@@ -1,3 +1,5 @@
+> **Article pricing update:** Follow [DEPLOY-ARTICLE-UPDATE.md](DEPLOY-ARTICLE-UPDATE.md) to add five free reads and set one paid article to ₹100 on your existing deployment.
+
 # PayRead — Razorpay + manual UPI
 
 Next.js + Supabase + Vercel. Readers pay once per article. An explicitly authorized administrator verifies receipt before approving access. Razorpay now offers automatic confirmation. Start with **RAZORPAY-SETUP.md** for the new migration, server-only environment variables, and webhook setup.

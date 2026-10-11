@@ -57,20 +57,22 @@ export default function ArticlePage() {
 
         const token = accessToken(id);
 
-        if (!token) return;
+        if (preview.price_paise !== 0 && !token) return;
 
         const { data: contentRows, error: contentError } = await client.rpc(
           'get_article_content',
           {
             p_article_id: id,
-            p_access_token: token,
+            p_access_token: token || null,
           },
         );
 
         if (cancelled) return;
 
         if (contentError) {
-          setError(`Could not verify your purchase: ${contentError.message}. Please retry before paying again.`);
+          setError(preview.price_paise === 0
+            ? `Could not load this article: ${contentError.message}. Please retry.`
+            : `Could not verify your purchase: ${contentError.message}. Please retry before paying again.`);
           return;
         }
 

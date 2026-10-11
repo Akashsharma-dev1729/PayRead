@@ -69,7 +69,7 @@ export default function Home() {
       <section className="hero">
         <p className="muted">PAY PER ARTICLE</p>
         <h1>Good writing, without another subscription.</h1>
-        <p className="muted">Pay once for the article you actually want to read.</p>
+        <p className="muted">Explore free articles, or unlock our premium read for ₹100.</p>
       </section>
 
       {supabaseConfigError ? (
@@ -108,10 +108,14 @@ export default function Home() {
               <h2>{a.title}</h2>
               <p className="muted">{a.excerpt}</p>
               <div className="row">
-                <span className="price">{formatPrice(a.price_paise)}</span>
-                <button className="btn" onClick={() => accessToken(a.id) ? location.assign(`/article/${a.id}`) : setSelected(a)}>
-                  Read for {formatPrice(a.price_paise)}
-                </button>
+                <span className="price">{a.price_paise === 0 ? 'Free' : formatPrice(a.price_paise)}</span>
+                {a.price_paise === 0 ? (
+                  <a className="btn" href={`/article/${a.id}`}>Read free</a>
+                ) : (
+                  <button className="btn" onClick={() => accessToken(a.id) ? location.assign(`/article/${a.id}`) : setSelected(a)}>
+                    Read for {formatPrice(a.price_paise)}
+                  </button>
+                )}
               </div>
             </article>
           ))}
