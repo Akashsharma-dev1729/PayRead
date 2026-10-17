@@ -88,6 +88,11 @@ test('Razorpay service with real SQL and a simulated gateway',async t=>{
   await assert.rejects(processWebhook(adapter,raw,'invalid'),/signature/);
   await assert.rejects(processWebhook(adapter,raw+' ',sign(raw,'webhook-secret')),/signature/);
  });
+ await t.test('order.paid without embedded payment ID is acknowledged without changing access',async()=>{
+  const event=JSON.stringify({event:'order.paid',payload:{order:{entity:{id:'order_1'}}}});
+  assert.deepEqual(await processWebhook(adapter,event,sign(event,'webhook-secret')),{received:true,ignored:true});
+  assert.equal(await status(),'completed');
+ });
  await t.test('duplicate webhook delivery is idempotent',async()=>{
   await processWebhook(adapter,raw,sign(raw,'webhook-secret'));await processWebhook(adapter,raw,sign(raw,'webhook-secret'));assert.equal(await status(),'completed');
  });
