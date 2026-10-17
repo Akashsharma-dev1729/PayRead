@@ -16,6 +16,7 @@ export default function ArticlePage() {
   const [article, setArticle] = useState<Article | null>(null);
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
   const [error, setError] = useState(supabaseConfigError || '');
 
   useEffect(() => {
@@ -80,6 +81,8 @@ export default function ArticlePage() {
         if (unlocked) {
           setArticle(unlocked as Article);
           setAllowed(true);
+        } else if (preview.price_paise === 0) {
+          setError('Could not load this free article. Please retry.');
         }
       } catch (requestError) {
         if (!cancelled) setError(messageFromError(requestError));
@@ -93,7 +96,7 @@ export default function ArticlePage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, retry]);
 
   if (loading || (article && article.id !== id)) {
     return (
@@ -121,7 +124,11 @@ export default function ArticlePage() {
 
         {error && <p className="danger">{error}</p>}
 
-        {allowed ? (
+        {error ? (
+          <button className="btn secondary" onClick={() => setRetry(value => value + 1)}>
+            Retry loading article
+          </button>
+        ) : allowed ? (
           <div className="article-content">{article.content}</div>
         ) : (
           <div className="card">

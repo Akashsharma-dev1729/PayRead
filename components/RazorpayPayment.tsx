@@ -34,7 +34,7 @@ export default function RazorpayPayment({article,onUnlocked,onActive}:{article:A
   return data;
  }
  async function start(){
-  if(locked.current)return;locked.current=true;setBusy(true);setMessage('Preparing secure checkout…');
+  if(locked.current)return;locked.current=true;setBusy(true);callbacks.current.onActive(true);setMessage('Preparing secure checkout…');
   const release=()=>{locked.current=false;if(mounted.current){setBusy(false);callbacks.current.onActive(false);}};
   try {
    const session=paymentSession(article.id,'razorpay');setReference(session.ref);

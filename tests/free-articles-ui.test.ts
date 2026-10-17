@@ -11,14 +11,14 @@ test('free reader bypasses checkout; paid reader remains locked without a token'
  const {supabase}=await import('../lib/supabase');
  const {default:Home}=await import('../app/page');
  const {default:ArticlePage}=await import('../app/article/[id]/page');
- const {render,waitFor,cleanup}=await import('@testing-library/react');
+ const {render,waitFor,fireEvent,cleanup}=await import('@testing-library/react');
  const free={id:'71000000-0000-4000-8000-000000000001',title:'Free read',excerpt:'An excerpt',price_paise:0,published:true};
  const paid={...free,id:'10000000-0000-4000-8000-000000000001',title:'Paid read',price_paise:10000};
- let contentCalls=0;
+ let contentCalls=0;let failContent=false;
  Object.defineProperty(supabase,'rpc',{value:async(name:string,args?:{p_article_id:string;p_access_token?:string|null})=>{
   if(name==='list_published_articles')return {data:[free,paid],error:null};
   if(name==='get_article_preview')return {data:[args!.p_article_id===free.id?free:paid],error:null};
-  if(name==='get_article_content'){contentCalls++;assert.equal(args!.p_article_id,free.id);assert.equal(args!.p_access_token,null);return {data:[{...free,content:'Full free article body'}],error:null};}
+  if(name==='get_article_content'){contentCalls++;assert.equal(args!.p_article_id,free.id);assert.equal(args!.p_access_token,null);return failContent?{data:null,error:{message:'Network unavailable'}}:{data:[{...free,content:'Full free article body'}],error:null};}
   throw new Error(`Unexpected payment call: ${name}`);
  }});
  try {
@@ -33,5 +33,12 @@ test('free reader bypasses checkout; paid reader remains locked without a token'
  reader.rerender(React.createElement(PathParamsContext.Provider,{value:{id:paid.id}},React.createElement(ArticlePage)));
  await waitFor(()=>assert.ok(reader.getByText('Article locked')));
  assert.equal(reader.queryByText('Full free article body'),null);assert.equal(contentCalls,1);
+ cleanup();failContent=true;
+ const failed=render(React.createElement(PathParamsContext.Provider,{value:{id:free.id}},React.createElement(ArticlePage)));
+ await waitFor(()=>assert.ok(failed.getByText(/Network unavailable/)));
+ assert.equal(failed.queryByText('Article locked'),null);
+ assert.equal(failed.queryByText(/Purchase access/),null);
+ failContent=false;fireEvent.click(failed.getByRole('button',{name:'Retry loading article'}));
+ await waitFor(()=>assert.ok(failed.getByText('Full free article body')));
  } finally {cleanup();supabase!.auth.stopAutoRefresh();(supabase!.auth as unknown as {broadcastChannel?:BroadcastChannel}).broadcastChannel?.close();dom.window.close();}
 });
