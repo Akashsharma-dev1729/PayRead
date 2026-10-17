@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { fetchWithTimeout } from './fetch-with-timeout';
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const rawKey = (
@@ -28,6 +29,7 @@ export const supabaseConfigError = !rawUrl
 export const supabase: SupabaseClient | null = supabaseConfigError
   ? null
   : createClient(rawUrl!, rawKey!, {
+      global: { fetch: fetchWithTimeout },
       auth: {
         persistSession: true,
         autoRefreshToken: true,

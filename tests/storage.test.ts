@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { accessToken, paymentSession } from '../lib/storage';
+import { accessToken, paymentSession, savedPaymentSession } from '../lib/storage';
 import { saveAccess } from '../lib/payment';
 const memory = new Map<string,string>();
 Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(k:string)=>memory.get(k)||null,setItem:(k:string,v:string)=>memory.set(k,v)}});
@@ -13,6 +13,21 @@ test('access readers tolerate corrupt and malformed storage',()=>{
 });
 test('confirmed access is recoverable',()=>{
  const token=crypto.randomUUID();saveAccess('article',token);assert.equal(accessToken('article'),token);
+});
+test('a purchase cannot cross payment providers, including legacy manual sessions',()=>{
+ const session=paymentSession('gateway','razorpay');
+ assert.throws(()=>paymentSession('gateway','manual_upi'),/another payment method/);
+ assert.deepEqual(paymentSession('gateway','razorpay'),session);
+ memory.set('payread_pending',JSON.stringify({legacy:{token:crypto.randomUUID(),ref:'PR1234567890'}}));
+ assert.equal(savedPaymentSession('legacy')?.method,'manual_upi');
+ assert.throws(()=>paymentSession('legacy','razorpay'),/another payment method/);
+});
+test('corrupt pending records do not force the manual payment screen',()=>{
+ for(const value of [null,{}, {method:'razorpay'}, {token:crypto.randomUUID(),ref:'PR1234567890',method:'unknown'}]) {
+  memory.set('payread_pending',JSON.stringify({broken:value}));
+  assert.equal(savedPaymentSession('broken'),null);
+ }
+ assert.throws(()=>paymentSession('broken','razorpay'),/unknown payment method/);
 });
 test('blocked storage stops checkout before any payment can be made',()=>{
  Object.defineProperty(globalThis,'localStorage',{value:{getItem:()=>{throw Error('denied')},setItem:()=>{throw Error('denied')}}});

@@ -14,11 +14,13 @@ test('free reader bypasses checkout; paid reader remains locked without a token'
  const {render,waitFor,cleanup}=await import('@testing-library/react');
  const free={id:'71000000-0000-4000-8000-000000000001',title:'Free read',excerpt:'An excerpt',price_paise:0,published:true};
  const paid={...free,id:'10000000-0000-4000-8000-000000000001',title:'Paid read',price_paise:10000};
- let contentCalls=0;
+ let contentCalls=0;let recoveredToken:string|null=null;
  Object.defineProperty(supabase,'rpc',{value:async(name:string,args?:{p_article_id:string;p_access_token?:string|null})=>{
   if(name==='list_published_articles')return {data:[free,paid],error:null};
   if(name==='get_article_preview')return {data:[args!.p_article_id===free.id?free:paid],error:null};
-  if(name==='get_article_content'){contentCalls++;assert.equal(args!.p_article_id,free.id);assert.equal(args!.p_access_token,null);return {data:[{...free,content:'Full free article body'}],error:null};}
+  if(name==='get_article_content'){contentCalls++;
+   if(args!.p_article_id===paid.id){assert.equal(args!.p_access_token,recoveredToken);return {data:[{...paid,content:'Recovered paid article'}],error:null};}
+   assert.equal(args!.p_article_id,free.id);assert.equal(args!.p_access_token,null);return {data:[{...free,content:'Full free article body'}],error:null};}
   throw new Error(`Unexpected payment call: ${name}`);
  }});
  try {
@@ -33,5 +35,11 @@ test('free reader bypasses checkout; paid reader remains locked without a token'
  reader.rerender(React.createElement(PathParamsContext.Provider,{value:{id:paid.id}},React.createElement(ArticlePage)));
  await waitFor(()=>assert.ok(reader.getByText('Article locked')));
  assert.equal(reader.queryByText('Full free article body'),null);assert.equal(contentCalls,1);
+ cleanup();
+ recoveredToken=crypto.randomUUID();
+ localStorage.setItem('payread_pending',JSON.stringify({[paid.id]:{token:recoveredToken,ref:'PR1234567890',method:'razorpay'}}));
+ const recovered=render(React.createElement(PathParamsContext.Provider,{value:{id:paid.id}},React.createElement(ArticlePage)));
+ await waitFor(()=>assert.ok(recovered.getByText('Recovered paid article')));
+ assert.equal(JSON.parse(localStorage.getItem('payread_access')!)[paid.id],recoveredToken);
  } finally {cleanup();supabase!.auth.stopAutoRefresh();(supabase!.auth as unknown as {broadcastChannel?:BroadcastChannel}).broadcastChannel?.close();dom.window.close();}
 });

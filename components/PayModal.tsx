@@ -2,7 +2,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import ManualPayModal from './ManualPayModal';
 import RazorpayPayment from './RazorpayPayment';
-import {paymentSession,readRecord} from '@/lib/storage';
+import {paymentSession,savedPaymentSession} from '@/lib/storage';
 import type {Article} from '@/lib/types';
 export default function PayModal(props:{article:Article;onClose:()=>void;onUnlocked:()=>void}){
  const [method,setMethod]=useState<'manual_upi'|'razorpay'|null>(null);
@@ -10,8 +10,8 @@ export default function PayModal(props:{article:Article;onClose:()=>void;onUnloc
  const dialog=useRef<HTMLDivElement>(null);const activeRef=useRef(false);activeRef.current=active;
  const close=useRef(props.onClose);close.current=props.onClose;
  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;
-  const record=readRecord('payread_pending')[props.article.id] as {method?:string}|undefined;
-  if(record)setMethod(record.method==='razorpay'?'razorpay':'manual_upi');setReady(true);
+  const record=savedPaymentSession(props.article.id);
+  setMethod(record?.method || null);setReady(true);
   const handler=(e:KeyboardEvent)=>{if(activeRef.current)return;if(e.key==='Escape')close.current();
    if(e.key!=='Tab'||!dialog.current)return;
    const nodes=dialog.current.querySelectorAll<HTMLElement>('button:not(:disabled)');if(!nodes.length)return;

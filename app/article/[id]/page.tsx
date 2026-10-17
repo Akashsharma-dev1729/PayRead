@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
-import { accessToken, UUID } from '@/lib/storage';
-import { formatPrice } from '@/lib/payment';
+import { accessToken, savedPaymentSession, UUID } from '@/lib/storage';
+import { formatPrice, saveAccess } from '@/lib/payment';
+import PayModal from '@/components/PayModal';
 import type { Article } from '@/lib/types';
 
 function messageFromError(error: unknown) {
@@ -17,6 +18,8 @@ export default function ArticlePage() {
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(supabaseConfigError || '');
+  const [showPayment, setShowPayment] = useState(false);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     setArticle(null);
@@ -55,7 +58,8 @@ export default function ArticlePage() {
 
         setArticle(preview as Article);
 
-        const token = accessToken(id);
+        // A payment may have completed after the checkout tab was closed.
+        const token = accessToken(id) || savedPaymentSession(id)?.token;
 
         if (preview.price_paise !== 0 && !token) return;
 
@@ -80,6 +84,7 @@ export default function ArticlePage() {
         if (unlocked) {
           setArticle(unlocked as Article);
           setAllowed(true);
+          if (token) { try { saveAccess(id, token); } catch { /* Content is already authorized for this visit. */ } }
         }
       } catch (requestError) {
         if (!cancelled) setError(messageFromError(requestError));
@@ -93,7 +98,7 @@ export default function ArticlePage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, reload]);
 
   if (loading || (article && article.id !== id)) {
     return (
@@ -107,6 +112,7 @@ export default function ArticlePage() {
     return (
       <main className="container">
         <p className="danger">{error || 'Article not found.'}</p>
+        <button className="btn secondary" onClick={() => setReload(x => x + 1)}>Retry loading article</button>
       </main>
     );
   }
@@ -120,21 +126,24 @@ export default function ArticlePage() {
         <h1>{article.title}</h1>
 
         {error && <p className="danger">{error}</p>}
+        {error && <button className="btn secondary" onClick={() => setReload(x => x + 1)}>Retry loading article</button>}
 
         {allowed ? (
           <div className="article-content">{article.content}</div>
         ) : (
           <div className="card">
-            <h2>Article locked</h2>
+            <h2>{article.price_paise === 0 ? 'Article unavailable' : 'Article locked'}</h2>
             <p className="muted">
-              Purchase access from the home page for {formatPrice(article.price_paise)}.
+              {article.price_paise === 0 ? 'Please retry loading this free article.' : `Unlock or check your existing purchase for ${formatPrice(article.price_paise)}.`}
             </p>
+            {article.price_paise > 0 && <button className="btn" onClick={() => setShowPayment(true)}>Unlock / check purchase</button>}
             <a className="btn" href="/">
               Go back to PayRead
             </a>
           </div>
         )}
       </article>
+      {showPayment && <PayModal article={article} onClose={() => setShowPayment(false)} onUnlocked={() => { setShowPayment(false); setReload(x => x + 1); }} />}
     </main>
   );
 }

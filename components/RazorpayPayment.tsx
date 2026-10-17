@@ -1,6 +1,6 @@
 'use client';
 import React,{useEffect,useRef,useState} from 'react';
-import {supabase} from '@/lib/supabase';
+import {supabase,supabaseConfigError} from '@/lib/supabase';
 import {formatPrice,saveAccess} from '@/lib/payment';
 import {paymentSession} from '@/lib/storage';
 import {loadCheckout,type CheckoutInstance} from '@/lib/razorpay-checkout';
@@ -9,23 +9,25 @@ import type {Article} from '@/lib/types';
 export default function RazorpayPayment({article,onUnlocked,onActive}:{article:Article;onUnlocked:()=>void;onActive:(active:boolean)=>void}) {
  const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [reference,setReference]=useState('');
  const [amount,setAmount]=useState(article.price_paise);
+ const [revoked,setRevoked]=useState(false);
  const mounted=useRef(false);const locked=useRef(false);const finished=useRef(false);const checkout=useRef<CheckoutInstance|null>(null);
  const callbacks=useRef({onUnlocked,onActive});callbacks.current={onUnlocked,onActive};
- const unlock=(token:string)=>{if(!mounted.current||finished.current)return;saveAccess(article.id,token);finished.current=true;callbacks.current.onUnlocked();};
+ const unlock=(token:string)=>{if(!mounted.current||finished.current)return;saveAccess(article.id,token);finished.current=true;checkout.current?.close();locked.current=false;setBusy(false);callbacks.current.onActive(false);callbacks.current.onUnlocked();};
  useEffect(()=>{
-  mounted.current=true;let cancelled=false;let timer:ReturnType<typeof setTimeout>|undefined;
+  mounted.current=true;finished.current=false;setRevoked(false);let cancelled=false;let timer:ReturnType<typeof setTimeout>|undefined;
   const poll=async()=>{
    try {const session=paymentSession(article.id,'razorpay');setReference(session.ref);
-    const result=await supabase?.rpc('get_payment_status',{p_access_token:session.token});
+    if(!supabase)throw new Error(supabaseConfigError || 'Payment status is unavailable.');
+    const result=await supabase.rpc('get_payment_status',{p_access_token:session.token});
     if(cancelled)return;
     if(result?.error)throw new Error('Could not check payment status.');
     if(result?.data==='completed'){unlock(session.token);return;}
-    if(result?.data==='failed'){setMessage('This purchase was refunded or revoked. Contact the site owner.');return;}
+    if(result?.data==='failed'){finished.current=true;setRevoked(true);checkout.current?.close();locked.current=false;setBusy(false);callbacks.current.onActive(false);setMessage('This purchase was refunded or revoked. Contact the site owner.');return;}
    }catch{if(!cancelled)setMessage('Unable to restore payment status. Check browser storage and your connection before paying.');}
    if(!cancelled)timer=setTimeout(()=>void poll(),3000);
   };
   void poll();
-  return()=>{mounted.current=false;cancelled=true;if(timer)clearTimeout(timer);checkout.current?.close();};
+  return()=>{mounted.current=false;cancelled=true;if(timer)clearTimeout(timer);checkout.current?.close();locked.current=false;callbacks.current.onActive(false);};
  },[article.id]);
  async function post(path:string,body:unknown){
   const response=await fetch(`/api/razorpay/${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
@@ -34,12 +36,13 @@ export default function RazorpayPayment({article,onUnlocked,onActive}:{article:A
   return data;
  }
  async function start(){
-  if(locked.current)return;locked.current=true;setBusy(true);setMessage('Preparing secure checkout…');
+  if(locked.current||finished.current||revoked)return;locked.current=true;setBusy(true);callbacks.current.onActive(true);setMessage('Preparing secure checkout…');
   const release=()=>{locked.current=false;if(mounted.current){setBusy(false);callbacks.current.onActive(false);}};
   try {
+   if(!supabase)throw new Error(supabaseConfigError || 'Payment status is unavailable.');
    const session=paymentSession(article.id,'razorpay');setReference(session.ref);
-   await loadCheckout();if(!mounted.current)return;
-   const order=await post('order',{articleId:article.id,token:session.token,ref:session.ref});if(!mounted.current)return;
+   await loadCheckout();if(!mounted.current||finished.current){release();return;}
+   const order=await post('order',{articleId:article.id,token:session.token,ref:session.ref});if(!mounted.current||finished.current){release();return;}
    if(order.completed){unlock(session.token);release();return;}
    setAmount(order.amount);
    if(!window.Razorpay)throw new Error('Checkout is unavailable.');
@@ -57,7 +60,7 @@ export default function RazorpayPayment({article,onUnlocked,onActive}:{article:A
  }
  return <div className="center">
   <p className="price">{formatPrice(amount)} one-time</p>
-  <button className="btn" disabled={busy} onClick={()=>void start()}>{busy?'Processing…':'Pay with Razorpay'}</button>
+  <button className="btn" disabled={busy||revoked||finished.current||!supabase} onClick={()=>void start()}>{busy?'Processing…':'Pay with Razorpay'}</button>
   <p className="muted small">Access unlocks after payment is confirmed automatically.</p>
   {reference&&<p className="small">Reference: {reference}</p>}
   {message&&<p role="status">{message}</p>}
