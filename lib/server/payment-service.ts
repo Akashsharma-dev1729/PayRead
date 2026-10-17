@@ -53,6 +53,10 @@ export async function processWebhook(db: SupabaseClient, raw: string, signature:
   let event: {event?:string;payload?:{payment?:{entity?:{id?:string}};refund?:{entity?:{payment_id?:string}}}};
   try {event=JSON.parse(raw);} catch {throw new PaymentError('Invalid webhook body.');}
   if (!event || !['payment.captured','order.paid','refund.processed'].includes(event.event || '')) return {received:true,ignored:true};
+  // order.paid webhooks identify an order; their payment entity is not guaranteed.
+  // A separate payment.captured webhook can confirm capture, so acknowledge
+  // order.paid here rather than returning a 400 and causing endless retries.
+  if (event.event === 'order.paid' && !event.payload?.payment?.entity?.id) return {received:true,ignored:true};
   const id=event.event==='refund.processed' ? event.payload?.refund?.entity?.payment_id : event.payload?.payment?.entity?.id;
   if (typeof id!=='string' || !/^pay_[A-Za-z0-9]+$/.test(id)) throw new PaymentError('Webhook payment is missing.');
   // Fetch authoritative current state so late/duplicate captured events cannot undo a refund.
