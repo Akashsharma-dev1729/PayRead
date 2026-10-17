@@ -43,6 +43,7 @@ export default function Admin() {
   const authGeneration = useRef(0);
   const loadGeneration = useRef(0);
   const [busy, setBusy] = useState<string | null>(null);
+  const busyRef = useRef(false);
   const [loadingPayments, setLoadingPayments] = useState(false);
 
   async function checkAdmin(currentSession: Session | null) {
@@ -223,7 +224,8 @@ export default function Admin() {
   async function approve(id: string, status: 'completed' | 'failed') {
     if (!supabase || !isAdmin) return;
 
-    if (busy) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(id);
     setMsg('');
     try {
@@ -233,7 +235,7 @@ export default function Admin() {
       await load();
     } catch (error) {
       setMsg(friendlyNetworkError(error));
-    } finally { setBusy(null); }
+    } finally { busyRef.current = false; setBusy(null); }
   }
 
   async function signOut() {
