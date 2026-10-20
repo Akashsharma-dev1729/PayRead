@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
-import { accessToken, UUID } from '@/lib/storage';
-import { formatPrice } from '@/lib/payment';
+import { accessToken, pendingToken, UUID } from '@/lib/storage';
+import { formatPrice, saveAccess } from '@/lib/payment';
 import type { Article } from '@/lib/types';
 
 function messageFromError(error: unknown) {
@@ -55,7 +55,10 @@ export default function ArticlePage() {
 
         setArticle(preview as Article);
 
-        const token = accessToken(id);
+        // A purchase approved while the payment dialog was closed has its token
+        // only in the pending record; try it so the buyer is not told to pay again.
+        const savedToken = accessToken(id);
+        const token = savedToken || pendingToken(id);
 
         if (preview.price_paise !== 0 && !token) return;
 
@@ -78,6 +81,9 @@ export default function ArticlePage() {
 
         const unlocked = Array.isArray(contentRows) ? contentRows[0] : null;
         if (unlocked) {
+          if (!savedToken && token && preview.price_paise !== 0) {
+            try { saveAccess(id, token); } catch { /* access still works for this visit */ }
+          }
           setArticle(unlocked as Article);
           setAllowed(true);
         }

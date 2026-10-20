@@ -12,6 +12,8 @@ type AdminPayment = {
   status: string;
   transaction_ref: string;
   created_at: string;
+  payer_utr: string;
+  claimed_at: string;
   article_title: string | null;
 };
 
@@ -171,10 +173,13 @@ export default function Admin() {
     try {
       const { data: paymentData, error: paymentError } = await supabase
         .from('payments')
-        .select('id, article_id, amount_paise, status, transaction_ref, created_at')
+        .select('id, article_id, amount_paise, status, transaction_ref, created_at, payer_utr, claimed_at')
         .eq('status', 'pending')
         .eq('provider', 'manual_upi')
-        .order('created_at', { ascending: false });
+        // Only purchases whose buyer reported a UPI transaction ID. Dialogs that
+        // were opened but never paid stay out of the queue.
+        .not('payer_utr', 'is', null)
+        .order('claimed_at', { ascending: true });
 
       if (generation !== authGeneration.current || request !== loadGeneration.current) return;
       if (paymentError) {
@@ -344,18 +349,20 @@ export default function Admin() {
       </button>
 
       <p className="muted small">
-        Only approve payments after you have independently confirmed the money was received.
+        Open your bank or UPI app and find a received payment with the same UPI transaction ID (UTR) and amount. Approve only an exact match; reject anything you cannot find. Buyers appear here after they submit their transaction ID.
       </p>
 
       {msg && <p className="danger">{msg}</p>}
 
       {loadingPayments && <p>Loading payments…</p>}
-      {!loadingPayments && payments.length === 0 && <p>No pending payments.</p>}
+      {!loadingPayments && payments.length === 0 && <p>No payments waiting for review.</p>}
       <table className="table">
         <thead>
           <tr>
             <th>Article</th>
             <th>Amount</th>
+            <th>UPI transaction ID (UTR)</th>
+            <th>Submitted</th>
             <th>Reference</th>
             <th>Action</th>
           </tr>
@@ -366,7 +373,9 @@ export default function Admin() {
             <tr key={p.id}>
               <td>{p.article_title || p.article_id}</td>
               <td>₹{(p.amount_paise / 100).toFixed(2)}</td>
-              <td>{p.transaction_ref}</td>
+              <td><strong>{p.payer_utr}</strong></td>
+              <td>{new Date(p.claimed_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</td>
+              <td className="small">{p.transaction_ref}</td>
               <td>
                 <button className="btn" disabled={busy !== null} onClick={() => void approve(p.id, 'completed')}>
                   Approve

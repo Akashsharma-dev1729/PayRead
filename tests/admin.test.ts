@@ -13,16 +13,19 @@ test('admin loads automatically, detects review conflict, and discards role chec
  const session={user:{id:'admin'},access_token:'test'};
  let callback: (event:string, session:unknown)=>void=()=>{};
  let resolveRole: ((value:unknown)=>void)|undefined;
- let slow=false; const reviews:unknown[]=[];
+ let slow=false; const reviews:unknown[]=[]; const filters:unknown[][]=[];
  Object.defineProperty(supabase!.auth,'getSession',{value:async()=>({data:{session},error:null})});
  Object.defineProperty(supabase!.auth,'onAuthStateChange',{value:(fn:typeof callback)=>{callback=fn;return {data:{subscription:{unsubscribe(){}}}}}});
  Object.defineProperty(supabase,'rpc',{value:async(name:string,args:unknown)=>{
   if(name==='is_admin')return slow ? new Promise(resolve=>{resolveRole=resolve}) : {data:true,error:null};
   reviews.push(args);return {data:false,error:null};
  }});
- Object.defineProperty(supabase,'from',{value:(table:string)=>({select:()=> table==='payments'?{eq:()=>({eq:()=>({order:async()=>({data:[{id:'p1',article_id:'a1',amount_paise:100,transaction_ref:'PR123',status:'pending'}],error:null})})})}:{in:async()=>({data:[{id:'a1',title:'Paid article'}],error:null})}})});
+ Object.defineProperty(supabase,'from',{value:(table:string)=>({select:()=> table==='payments'?{eq:()=>({eq:()=>({not:(column:string,op:string,value:unknown)=>{filters.push([column,op,value]);return {order:async()=>({data:[{id:'p1',article_id:'a1',amount_paise:100,transaction_ref:'PR123',status:'pending',payer_utr:'412345678901',claimed_at:'2026-10-20T08:00:00Z'}],error:null})};}})})}:{in:async()=>({data:[{id:'a1',title:'Paid article'}],error:null})}})});
  const view=render(React.createElement(Admin));
  await waitFor(()=>assert.ok(view.getByText('Paid article')));
+ // Only claimed purchases are queued, and the admin sees the UTR to match.
+ assert.deepEqual(filters,[['payer_utr','is',null]]);
+ assert.ok(view.getByText('412345678901'));
  fireEvent.click(view.getByText('Approve'));
  await waitFor(()=>assert.ok(view.getByText(/already reviewed/)));
  assert.deepEqual(reviews,[{p_payment_id:'p1',p_status:'completed'}]);
