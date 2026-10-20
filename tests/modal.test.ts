@@ -29,6 +29,8 @@ test('payment dialog Strict Mode, authoritative amount, UPI link, UTR claim, reo
  await waitFor(()=>assert.ok(rendered.getByRole('link',{name:'Pay with UPI'})));
  const href=rendered.getByRole('link',{name:'Pay with UPI'}).getAttribute('href')!;
  assert.equal(new URL(href).searchParams.get('am'),'1.00');
+ const requests=calls.filter(x=>x.name==='create_payment');assert.equal(requests.length,2);
+ assert.deepEqual(requests[0].args,requests[1].args);
  // UPI apps decode values as URIs: spaces must be %20, never '+'. The payee-visible
  // note carries the reference; the merchant-only tr field is not sent.
  assert.match(href,/^upi:\/\/pay\?pa=test@upi&pn=Pay%20Read&/);
@@ -44,8 +46,6 @@ test('payment dialog Strict Mode, authoritative amount, UPI link, UTR claim, reo
  await waitFor(()=>assert.ok(rendered.getByText('412345678901')));
  assert.deepEqual(calls.find(x=>x.name==='submit_payment_utr')!.args,{p_access_token:requests[0].args.p_access_token,p_utr:'412345678901'});
  assert.equal(rendered.queryByRole('link',{name:'Pay with UPI'}),null);
- const requests=calls.filter(x=>x.name==='create_payment');assert.equal(requests.length,2);
- assert.deepEqual(requests[0].args,requests[1].args);
  fireEvent.keyDown(document,{key:'Escape'});assert.equal(closes,1);
  rendered.unmount();assert.equal(document.activeElement?.id,'origin');
  state='completed';rendered=render(view());
