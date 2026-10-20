@@ -46,11 +46,40 @@ test('SQL migration, actual PostgreSQL permissions and purchase lifecycle', asyn
   await assert.rejects(db.query(`select review_payment('${paymentId}','completed')`), /Admin access required/);
   await assert.rejects(db.query(`update payments set status='completed'`), /permission denied/);
  });
- await t.test('admin approval is atomic, server-timestamped, and does not repeat', async () => {
+ await t.test('UPI: approval needs the buyer\'s transaction ID; bad IDs and other tokens are refused', async () => {
   await db.exec(`set request.jwt.claim.sub = '${admin}'`);
+  await assert.rejects(db.query(`select review_payment('${paymentId}','completed')`), /not submitted a UPI transaction ID/);
+  await db.exec('reset role; set role anon');
+  for (const bad of ['12345', '1234567890123', 'ABCDEFGHIJKL', '']) await assert.rejects(db.query(`select submit_payment_utr('${token}','${bad}')`), /12-digit/);
+  await assert.rejects(db.query(`select submit_payment_utr('20000000-0000-4000-8000-000000000099','412345678901')`), /Payment not found/);
+  // Mistype, then correct while still pending.
+  assert.equal((await db.query<{s:string}>(`select submit_payment_utr('${token}','412345678900') as s`)).rows[0].s,'pending');
+  assert.equal((await db.query<{s:string}>(`select submit_payment_utr('${token}','412345678901') as s`)).rows[0].s,'pending');
+  const d = (await db.query<{payer_utr:string;claimed_at:unknown}>(`select * from get_payment_details('${token}')`)).rows[0];
+  assert.equal(d.payer_utr,'412345678901'); assert.ok(d.claimed_at);
+ });
+ await t.test('UPI: one transfer cannot back two purchases until the first claim is rejected', async () => {
+  await db.exec('reset role; set role anon');
+  const t2 = '20000000-0000-4000-8000-000000000002', t3 = '20000000-0000-4000-8000-000000000003';
+  await db.query(`select create_payment('${article}','PR2234567890','${t2}')`);
+  await db.query(`select create_payment('${article}','PR3234567890','${t3}')`);
+  await assert.rejects(db.query(`select submit_payment_utr('${t2}','412345678901')`), /already attached to another purchase/);
+  await db.query(`select submit_payment_utr('${t2}','512345678901')`);
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub = '${admin}'`);
+  assert.equal((await db.query<{ok:boolean}>(`select review_payment((select id from payments where access_token='${t2}'),'failed') as ok`)).rows[0].ok,true);
+  await db.exec('reset role; set role anon');
+  // Rejected claim frees its UTR for the genuine payer; a rejected purchase can no longer be claimed.
+  assert.equal((await db.query<{s:string}>(`select submit_payment_utr('${t3}','512345678901') as s`)).rows[0].s,'pending');
+  assert.equal((await db.query<{s:string}>(`select submit_payment_utr('${t2}','612345678901') as s`)).rows[0].s,'failed');
+  assert.equal((await db.query<{payer_utr:string}>(`select payer_utr from get_payment_details('${t2}')`)).rows[0].payer_utr,'512345678901');
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub = '${admin}'`);
+  assert.equal((await db.query<{ok:boolean}>(`select review_payment((select id from payments where access_token='${t3}'),'failed') as ok`)).rows[0].ok,true);
+ });
+ await t.test('admin approval is atomic, server-timestamped, and does not repeat', async () => {
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub = '${admin}'`);
   assert.equal((await db.query<{ok:boolean}>(`select review_payment('${paymentId}','completed') as ok`)).rows[0].ok,true);
   assert.equal((await db.query<{ok:boolean}>(`select review_payment('${paymentId}','failed') as ok`)).rows[0].ok,false);
-  assert.ok((await db.query<{completed_at:unknown}>('select completed_at from payments')).rows[0].completed_at);
+  assert.ok((await db.query<{completed_at:unknown}>(`select completed_at from payments where id='${paymentId}'`)).rows[0].completed_at);
  });
  await t.test('completed token unlocks only its article', async () => {
   await db.exec('reset role; set role anon');

@@ -17,10 +17,26 @@ export function persist(key: string, id: string, value: unknown) {
   catch { throw new Error('Browser storage is unavailable. Enable site storage before paying.'); }
 }
 export type PaymentSession = { token: string; ref: string; method?: 'manual_upi' | 'razorpay' };
-export function paymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
+function savedSession(id: string): PaymentSession | null {
   const existing = readRecord('payread_pending')[id] as Partial<PaymentSession> | undefined;
-  if (existing && typeof existing.token === 'string' && UUID.test(existing.token) && typeof existing.ref === 'string' && /^PR[0-9A-Z]{8,62}$/.test(existing.ref)) return existing as PaymentSession;
+  return existing && typeof existing.token === 'string' && UUID.test(existing.token) && typeof existing.ref === 'string' && /^PR[0-9A-Z]{8,62}$/.test(existing.ref)
+    ? existing as PaymentSession : null;
+}
+function freshSession(id: string, method: 'manual_upi' | 'razorpay'): PaymentSession {
   const session = { method, token: crypto.randomUUID(), ref: `PR${crypto.randomUUID().replaceAll('-', '').toUpperCase()}` };
   persist('payread_pending', id, session);
   return session;
+}
+export function paymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
+  return savedSession(id) ?? freshSession(id, method);
+}
+// Only after the administrator has rejected the saved payment: replaces the
+// identity so the buyer can make a new purchase instead of being stuck forever.
+export function restartPaymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
+  return freshSession(id, method);
+}
+// Token of an in-progress purchase, used to pick up an approval that happened
+// while the payment dialog was closed.
+export function pendingToken(id: string): string | null {
+  return savedSession(id)?.token ?? null;
 }

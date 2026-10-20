@@ -1,12 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { accessToken, paymentSession } from '../lib/storage';
-import { saveAccess } from '../lib/payment';
+import { accessToken, paymentSession, pendingToken, restartPaymentSession } from '../lib/storage';
+import { saveAccess, normalizeUtr } from '../lib/payment';
 const memory = new Map<string,string>();
 Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(k:string)=>memory.get(k)||null,setItem:(k:string,v:string)=>memory.set(k,v)}});
 test('pending identity survives reopening',()=>{
  const a=paymentSession('article');assert.deepEqual(paymentSession('article'),a);
  assert.notEqual(paymentSession('other').token,a.token);
+});
+test('a rejected purchase can be replaced; pending token is readable for recovery',()=>{
+ const a=paymentSession('restart');assert.equal(pendingToken('restart'),a.token);
+ const b=restartPaymentSession('restart');assert.notEqual(b.token,a.token);assert.notEqual(b.ref,a.ref);
+ assert.deepEqual(paymentSession('restart'),b);assert.equal(pendingToken('nothing'),null);
+});
+test('UPI transaction IDs are normalised and validated',()=>{
+ assert.equal(normalizeUtr('4123 4567-8901'),'412345678901');
+ for(const bad of ['','12345','1234567890123','41234567890a']) assert.equal(normalizeUtr(bad),null);
 });
 test('access readers tolerate corrupt and malformed storage',()=>{
  for(const value of ['null','[]','oops','{"article":123}']) {memory.set('payread_access',value);assert.equal(accessToken('article'),null);}

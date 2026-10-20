@@ -1,3 +1,5 @@
+> **Manual UPI update (October 2026):** before deploying this version, run `supabase/migrations/202610200001_upi_utr_claims.sql` in the Supabase SQL Editor. Buyers now enter their 12-digit UPI transaction ID (UTR) after paying, and the admin queue lists only those claims with the UTR to match in your bank/UPI app. See [UPI-FIXES.md](UPI-FIXES.md).
+
 > **Article pricing update:** Follow [DEPLOY-ARTICLE-UPDATE.md](DEPLOY-ARTICLE-UPDATE.md) to add five free reads and set one paid article to ₹100 on your existing deployment.
 
 # PayRead — Razorpay + manual UPI
@@ -36,7 +38,7 @@ NEXT_PUBLIC_UPI_ID=your-upi-id@bank
 NEXT_PUBLIC_MERCHANT_NAME=PayRead
 ```
 
-The legacy NEXT_PUBLIC_SUPABASE_ANON_KEY is also supported. Never put a service-role or secret key in a NEXT_PUBLIC variable. The URL is the project origin, without /rest/v1. Redeploy after changing public environment variables.
+`NEXT_PUBLIC_UPI_ID` must be a plain UPI ID such as `name@okbank` (no spaces or `upi://` prefix); an invalid value disables UPI checkout with a clear message. The legacy NEXT_PUBLIC_SUPABASE_ANON_KEY is also supported. Never put a service-role or secret key in a NEXT_PUBLIC variable. The URL is the project origin, without /rest/v1. Redeploy after changing public environment variables.
 
 ## Run and verify
 
@@ -58,6 +60,6 @@ npm audit --omit=dev
 
 ## Purchase recovery
 
-Enable browser site storage before paying. Pending purchase identity is saved before the QR is shown. Closing/reopening the dialog or reloading reuses the same payment; do not pay twice. After approval, the same browser can reopen the article. A rejected payment shows its reference: contact the administrator rather than initiating another transfer. Clearing browser storage removes the bearer token; there is no account-based or cross-device recovery.
+Enable browser site storage before paying. Pending purchase identity is saved before the QR is shown. Closing/reopening the dialog or reloading reuses the same payment; do not pay twice. After approval, the same browser can reopen the article. After paying, the buyer enters the UPI transaction ID; it can be corrected until the payment is reviewed. A rejected payment shows its reference and transaction ID; a buyer who did pay should contact the administrator, and one who did not can start a new payment. An approval that happens while the dialog is closed is picked up when the buyer opens the article on the same browser. Clearing browser storage removes the bearer token; there is no account-based or cross-device recovery.
 
 See AUDIT-AND-FIXES.md for the 18 confirmed defect groups, validation coverage and remaining deployment limits.
