@@ -41,15 +41,16 @@ async function buyWithUpi(page: Page, priceLabel: string, utr: string) {
 
 async function adminApprove(admin: Page, utr: string) {
   await admin.goto('/admin');
-  const email = admin.getByPlaceholder('Email');
   const heading = admin.getByRole('heading', { name: 'Pending payments' });
-  await expect(email.or(heading)).toBeVisible();
-  if (await email.isVisible()) {
-    await email.fill(ADMIN.email);
+  // The admin page shows its sign-in form while it restores a session, so wait
+  // for the dashboard first and sign in only if it never appears.
+  try { await heading.waitFor({ state: 'visible', timeout: 15_000 }); }
+  catch {
+    await admin.getByPlaceholder('Email').fill(ADMIN.email);
     await admin.getByPlaceholder('Password').fill(ADMIN.password);
     await admin.getByRole('button', { name: 'Sign in' }).click();
+    await expect(heading).toBeVisible();
   }
-  await expect(heading).toBeVisible();
   await admin.getByRole('button', { name: 'Refresh' }).click();
   const row = admin.getByRole('row', { name: new RegExp(utr) });
   await expect(row).toBeVisible();
@@ -91,7 +92,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await expect(page.getByRole('button', { name: 'Read for ₹100.00' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Read for ₹49.00' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/01-home.png`, fullPage: true });
+    await page.waitForTimeout(2000); await page.screenshot({ path: `${SHOTS}/01-home.png`, fullPage: true });
     await page.goto(`/article/${FREE}`);
     await expect(page.getByText('A reading habit does not have to begin')).toBeVisible();
     await page.goto(`/article/${PAID}`);
@@ -103,7 +104,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     const { page } = browserA;
     await buyWithUpi(page, '₹100.00', UTR_A);
     await expect(page.getByText(`Payment submitted with UPI transaction ID ${UTR_A}`)).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/02-utr-submitted.png` });
+    await page.waitForTimeout(2000); await page.screenshot({ path: `${SHOTS}/02-utr-submitted.png` });
     await adminApprove(adminTab.page, UTR_A);
     await page.waitForURL(`**/article/${PAID}`, { timeout: 60_000 });
     await expect(page.getByText(PAID_BODY)).toBeVisible();
@@ -118,7 +119,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     const item = page.getByRole('listitem').filter({ hasText: PAID_TITLE });
     await expect(item.getByText('Unlocked')).toBeVisible();
     await expect(page.getByRole('link', { name: `Hi, ${ASHA.name}` })).toBeVisible();
-    await page.screenshot({ path: `${SHOTS}/03-account.png`, fullPage: true });
+    await page.waitForTimeout(2000); await page.screenshot({ path: `${SHOTS}/03-account.png`, fullPage: true });
   });
 
   test('4. another device: sign in and the purchase opens there too', async () => {
@@ -126,7 +127,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await page.goto(`/article/${PAID}`);
     await expect(page.getByRole('heading', { name: 'Article locked' })).toBeVisible();
     await page.getByRole('link', { name: 'Bought it on another device? Sign in' }).click();
-    await page.screenshot({ path: `${SHOTS}/04-login.png` });
+    await page.waitForTimeout(2000); await page.screenshot({ path: `${SHOTS}/04-login.png` });
     await page.getByLabel('Email').fill(ASHA.email);
     await page.getByLabel('Password').fill(ASHA.password);
     await page.getByRole('button', { name: 'Sign in' }).last().click();
