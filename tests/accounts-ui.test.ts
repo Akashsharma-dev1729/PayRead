@@ -52,6 +52,8 @@ test('login, sign-up, account purchases and owned articles', { timeout: 20000 },
   } });
   Object.defineProperty(supabase!.auth, 'signUp', { value: async (args: unknown) => { signUps.push(args); return { data: { session: null, user: { id: 'x' } }, error: null }; } });
   Object.defineProperty(supabase!.auth, 'signOut', { value: async () => { session = null; return { error: null }; } });
+  const metadataUpdates: unknown[] = [];
+  Object.defineProperty(supabase!.auth, 'updateUser', { value: async (args: unknown) => { metadataUpdates.push(args); return { data: {}, error: null }; } });
   Object.defineProperty(supabase, 'rpc', { value: async (name: string, args: unknown) => {
     rpcs.push({ name, args });
     if (name === 'claim_purchases') return { data: 1, error: null };
@@ -109,8 +111,18 @@ test('login, sign-up, account purchases and owned articles', { timeout: 20000 },
     assert.deepEqual(rpcs.find((r) => r.name === 'claim_purchases')!.args, { p_tokens: [browserToken] });
     assert.ok(rpcs.findIndex((r) => r.name === 'claim_purchases') < rpcs.findIndex((r) => r.name === 'my_purchases'));
     assert.equal(view.getByRole('link', { name: 'Read' }).getAttribute('href'), `/article/${paid.id}`);
+    // Renaming saves the profile and keeps the header's session name in sync.
+    fireEvent.change(view.getByLabelText('Display name'), { target: { value: '  Dan  ' } });
+    fireEvent.click(view.getByRole('button', { name: 'Save' }));
+    await waitFor(() => assert.ok(view.getByText('Saved.')));
+    assert.deepEqual(rpcs.find((r) => r.name === 'update_my_profile')!.args, { p_display_name: 'Dan' });
+    assert.deepEqual(metadataUpdates, [{ data: { display_name: 'Dan' } }]);
+    // Sign-out attaches this browser's purchases, then removes them from the browser.
+    const claimsBefore = rpcs.filter((r) => r.name === 'claim_purchases').length;
     fireEvent.click(view.getByRole('button', { name: 'Sign out' }));
     await waitFor(() => assert.deepEqual(visits, ['/']));
+    assert.equal(rpcs.filter((r) => r.name === 'claim_purchases').length, claimsBefore + 1);
+    assert.equal(localStorage.getItem('payread_access'), null);
     cleanup();
 
     // --- Home: an article owned through the account says "Read", not a price.

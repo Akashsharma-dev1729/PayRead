@@ -11,7 +11,12 @@ export function isValidSupabaseUrl(value?: string): value is string {
 
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname.endsWith('.supabase.co') && url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password && !url.port;
+    const bare = url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password;
+    const hosted = url.protocol === 'https:' && url.hostname.endsWith('.supabase.co') && !url.port;
+    // A local Supabase stack (supabase start) is accepted outside production builds only.
+    const local = process.env.NODE_ENV !== 'production' && (url.protocol === 'http:' || url.protocol === 'https:')
+      && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
+    return bare && (hosted || local);
   } catch {
     return false;
   }

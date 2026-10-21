@@ -48,6 +48,11 @@ export function storedPurchaseTokens(): string[] {
   }
   return [...tokens].slice(0, 100);
 }
+// After sign-out: the purchases now live in the account, not in this browser.
+export function forgetBrowserPurchases() {
+  try { localStorage.removeItem('payread_access'); localStorage.removeItem('payread_pending'); }
+  catch { /* storage unavailable: nothing stored */ }
+}
 // Token of an in-progress purchase, used to pick up an approval that happened
 // while the payment dialog was closed.
 export function pendingToken(id: string): string | null {

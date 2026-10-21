@@ -50,7 +50,7 @@ export default function AccountPage() {
   }
 
   async function signOut() {
-    try { await AuthService.shared().signOut(); navigation.go('/'); }
+    try { await AccountService.shared().signOutAndForgetBrowser(() => AuthService.shared().signOut()); navigation.go('/'); }
     catch (err) { setError(err instanceof Error ? err.message : 'Could not sign out.'); }
   }
 

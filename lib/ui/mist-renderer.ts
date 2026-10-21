@@ -125,7 +125,7 @@ export class MistRenderer {
     this.resizeObserver?.disconnect();
     this.intersectionObserver?.disconnect();
     document.removeEventListener('visibilitychange', this.onVisibility);
-    this.gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    // No loseContext(): the same canvas may be started again (React dev double-mount).
     this.gl = null;
   }
 

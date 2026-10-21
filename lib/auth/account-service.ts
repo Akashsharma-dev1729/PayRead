@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { storedPurchaseTokens } from '@/lib/storage';
+import { forgetBrowserPurchases, storedPurchaseTokens } from '@/lib/storage';
 
 export type Profile = { displayName: string; role: 'reader' | 'writer'; bio: string; isAdmin: boolean };
 
@@ -44,8 +44,11 @@ export class AccountService {
   async updateDisplayName(name: string): Promise<void> {
     const clean = name.trim();
     if (clean.length < 1 || clean.length > 60) throw new AccountError('Enter a name between 1 and 60 characters.');
-    const { error } = await this.requireClient().rpc('update_my_profile', { p_display_name: clean });
+    const client = this.requireClient();
+    const { error } = await client.rpc('update_my_profile', { p_display_name: clean });
     if (error) throw new AccountError('Could not save your name. Please retry.');
+    // The header shows the session's name; keep it in sync (best effort, the profile is the source of truth).
+    try { await client.auth.updateUser({ data: { display_name: clean } }); } catch { /* header refreshes on next sign-in */ }
   }
 
   /** Attaches purchases made in this browser to the account. Returns how many moved. */
@@ -70,6 +73,20 @@ export class AccountService {
       createdAt: row.created_at,
       completedAt: row.completed_at,
     }));
+  }
+
+  /**
+   * Signs out and removes this browser's purchase tokens, so a shared computer
+   * does not keep the account's articles open. Tokens are removed only after
+   * they are safely attached to an account; if that fails they are kept.
+   */
+  async signOutAndForgetBrowser(signOut: () => Promise<void>, forget: () => void = forgetBrowserPurchases): Promise<void> {
+    let attached = this.browserTokens().length === 0;
+    if (!attached) {
+      try { await this.claimBrowserPurchases(); attached = true; } catch { attached = false; }
+    }
+    await signOut();
+    if (attached) forget();
   }
 
   /** Claims browser purchases first (so a fresh sign-in sees them), then lists. */
