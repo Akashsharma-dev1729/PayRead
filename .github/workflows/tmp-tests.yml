@@ -1,0 +1,75 @@
+name: tmp-tests
+on:
+  push:
+    branches: [ci/run-tests-tmp]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci --no-audit --no-fund
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - name: unit tests, typecheck, build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-key
+          NEXT_PUBLIC_UPI_ID: ci@upi
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          set +e
+          mkdir -p e2e-output
+          node --import tsx --test --test-force-exit --test-timeout=60000 tests/*.test.ts > e2e-output/unit.txt 2>&1
+          echo "UNIT_EXIT=$?" >> e2e-output/unit.txt
+          npm run typecheck > e2e-output/typecheck.txt 2>&1
+          echo "TYPECHECK_EXIT=$?" >> e2e-output/typecheck.txt
+      - name: start local Supabase (outside the repo, so its migrations are not auto-applied)
+        run: |
+          mkdir -p /tmp/sb && cd /tmp/sb
+          supabase init </dev/null
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta > /tmp/sb/start.log 2>&1 || (cat /tmp/sb/start.log; exit 1)
+          supabase status -o env > /tmp/sb/env.txt
+          sed -E 's/(KEY|SECRET|PASSWORD)=.*/\1=***/' /tmp/sb/env.txt
+      - name: apply production upgrade path and seed
+        run: |
+          set -e
+          cd /tmp/sb && set -a && . ./env.txt && set +a && cd -
+          DB="${DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}"
+          for f in 202610010001_payread_repair.sql 202610020001_razorpay.sql 202610110001_free_articles.sql 202610200001_upi_utr_claims.sql 202610210001_accounts.sql; do
+            echo "== $f"; psql "$DB" -v ON_ERROR_STOP=1 -q -f "supabase/migrations/$f"
+          done
+          echo "== re-run accounts migration (must be re-runnable)"; psql "$DB" -v ON_ERROR_STOP=1 -q -f supabase/migrations/202610210001_accounts.sql
+          psql "$DB" -v ON_ERROR_STOP=1 -c "insert into public.articles(id,title,excerpt,content,price_paise,published) values ('10000000-0000-4000-8000-0000000000e2','Second Paid Read','A second paid article.','SECOND PAID BODY',4900,true);"
+          SERVICE="${SERVICE_ROLE_KEY:-$SECRET_KEY}"
+          curl -fsS -X POST "$API_URL/auth/v1/admin/users" -H "apikey: $SERVICE" -H "Authorization: Bearer $SERVICE" -H 'Content-Type: application/json' \
+            -d '{"email":"admin@payread.test","password":"admin-pass-123","email_confirm":true,"user_metadata":{"display_name":"Admin"}}' > /dev/null
+          psql "$DB" -v ON_ERROR_STOP=1 -c "insert into public.admin_users(user_id) select id from auth.users where email='admin@payread.test';"
+          psql "$DB" -c "select (select count(*) from public.profiles) profiles, (select count(*) from public.articles where published) articles, (select string_agg(price_paise::text, ',' order by price_paise) from public.articles where price_paise>0) paid;"
+      - name: end-to-end browser tests
+        run: |
+          set +e
+          cd /tmp/sb && set -a && . ./env.txt && set +a && cd -
+          export NEXT_PUBLIC_SUPABASE_URL="$API_URL"
+          export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="${ANON_KEY:-$PUBLISHABLE_KEY}"
+          export NEXT_PUBLIC_UPI_ID=ci@upi NEXT_TELEMETRY_DISABLED=1
+          unset NEXT_PUBLIC_MERCHANT_NAME
+          npm i --no-save --no-audit --no-fund @playwright/test@1.56.0 > /dev/null 2>&1
+          npx playwright install --with-deps chromium > /dev/null 2>&1
+          (npx next dev -p 3000 > e2e-output/next-dev.log 2>&1 &)
+          for i in $(seq 1 90); do curl -fsS -o /dev/null http://localhost:3000/ && break; sleep 2; done
+          for p in / /login /account /admin /article/71000000-0000-4000-8000-000000000001; do curl -fsS -o /dev/null --max-time 120 "http://localhost:3000$p"; done
+          npx playwright test -c e2e/playwright.config.ts > e2e-output/e2e.txt 2>&1
+          echo "E2E_EXIT=$?" >> e2e-output/e2e.txt
+      - name: publish output
+        if: always()
+        run: |
+          git config user.name ci && git config user.email ci@localhost
+          git checkout --orphan ci/test-output-tmp
+          git rm -rfq --cached . && git add -f e2e-output
+          git commit -qm "output for ${GITHUB_SHA}"
+          git push -f origin ci/test-output-tmp
