@@ -70,11 +70,11 @@ test('login, sign-up, account purchases and owned articles', { timeout: 20000 },
     let view = render(React.createElement(LoginPage));
     fireEvent.change(view.getByLabelText('Email'), { target: { value: ' Daniel@Example.com ' } });
     fireEvent.change(view.getByLabelText('Password'), { target: { value: 'wrong-password' } });
-    fireEvent.click(view.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(view.getAllByRole('button', { name: 'Sign in' }).at(-1)!); // the form's submit button
     await waitFor(() => assert.ok(view.getByText('Wrong email or password.')));
     assert.deepEqual(visits, []);
     fireEvent.change(view.getByLabelText('Password'), { target: { value: 'correct-horse' } });
-    fireEvent.click(view.getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(view.getAllByRole('button', { name: 'Sign in' }).at(-1)!); // the form's submit button
     await waitFor(() => assert.deepEqual(visits, ['/article/10000000-0000-4000-8000-000000000001']));
     assert.equal((signIns[1] as { email: string }).email, 'daniel@example.com');
     await act(async () => listener('SIGNED_IN', signedIn));
