@@ -35,6 +35,19 @@ export function paymentSession(id: string, method: 'manual_upi' | 'razorpay' = '
 export function restartPaymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
   return freshSession(id, method);
 }
+// Every purchase token this browser holds (completed and in progress), so they
+// can be attached to the account after sign-in. Malformed entries are skipped.
+export function storedPurchaseTokens(): string[] {
+  const tokens = new Set<string>();
+  for (const value of Object.values(readRecord('payread_access'))) {
+    if (typeof value === 'string' && UUID.test(value)) tokens.add(value.toLowerCase());
+  }
+  for (const value of Object.values(readRecord('payread_pending'))) {
+    const token = (value as Partial<PaymentSession> | null)?.token;
+    if (typeof token === 'string' && UUID.test(token)) tokens.add(token.toLowerCase());
+  }
+  return [...tokens].slice(0, 100);
+}
 // Token of an in-progress purchase, used to pick up an approval that happened
 // while the payment dialog was closed.
 export function pendingToken(id: string): string | null {

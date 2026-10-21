@@ -86,6 +86,47 @@ test('SQL migration, actual PostgreSQL permissions and purchase lifecycle', asyn
   assert.equal((await db.query<{content:string}>(`select * from get_article_content('${article}','${token}')`)).rows[0].content,'SECRET');
   assert.equal((await db.query(`select * from get_article_content('${other}','${token}')`)).rows.length,0);
  });
+ await t.test('accounts: profiles on sign-up, purchases claimed by token, content on any device', async () => {
+  await db.exec('reset role');
+  // Every Auth user (including ones created before the migration) has a reader profile.
+  assert.equal((await db.query<{n:number}>('select count(*)::int n from profiles')).rows[0].n, 2);
+  const stranger = '30000000-0000-4000-8000-000000000003';
+  await db.exec(`insert into auth.users values ('${stranger}')`);
+  assert.equal((await db.query<{role:string;display_name:string}>(`select role, display_name from profiles where id='${stranger}'`)).rows[0].role, 'reader');
+
+  await db.exec('set role anon');
+  await assert.rejects(db.query(`select claim_purchases(array['${token}'::uuid])`), /permission denied/);
+  await assert.rejects(db.query('select * from my_purchases()'), /permission denied/);
+  await assert.rejects(db.query('select * from profiles'), /permission denied/);
+
+  // The buyer signs in on another device: no token there, so nothing opens yet.
+  await db.exec(`reset role; set role authenticated; set request.jwt.claim.sub = '${user}'`);
+  assert.equal((await db.query(`select * from get_article_content('${article}', null)`)).rows.length, 0);
+  assert.equal((await db.query<{n:number}>(`select claim_purchases(array['${token}'::uuid]) n`)).rows[0].n, 1);
+  assert.equal((await db.query<{content:string}>(`select * from get_article_content('${article}', null)`)).rows[0].content, 'SECRET');
+  const mine = await db.query<{article_title:string;status:string}>('select * from my_purchases()');
+  assert.deepEqual(mine.rows.map(r => [r.article_title, r.status]), [['Paid', 'completed']]);
+  // Unpaid dialogs (pending, no UPI transaction ID) are not listed as purchases.
+  await db.query(`select create_payment('${article}','PR9234567890','20000000-0000-4000-8000-000000000009')`);
+  await db.query(`select claim_purchases(array['20000000-0000-4000-8000-000000000009'::uuid])`);
+  assert.equal((await db.query('select * from my_purchases()')).rows.length, 1);
+
+  // A claimed purchase never moves to another account, and others see nothing.
+  await db.exec(`set request.jwt.claim.sub = '${stranger}'`);
+  assert.equal((await db.query<{n:number}>(`select claim_purchases(array['${token}'::uuid]) n`)).rows[0].n, 0);
+  assert.equal((await db.query(`select * from get_article_content('${article}', null)`)).rows.length, 0);
+  assert.equal((await db.query('select * from my_purchases()')).rows.length, 0);
+  assert.equal((await db.query('select * from profiles')).rows.length, 1);
+
+  // Profile edits are validated and can never change the role.
+  await db.query(`select update_my_profile('  Daniel  ', 'Writes about focus.')`);
+  const me = (await db.query<{display_name:string;role:string;bio:string;is_admin:boolean}>('select * from get_my_profile()')).rows[0];
+  assert.deepEqual([me.display_name, me.role, me.bio, me.is_admin], ['Daniel', 'reader', 'Writes about focus.', false]);
+  await assert.rejects(db.query(`select update_my_profile('   ')`), /1 to 60/);
+  await assert.rejects(db.query(`update profiles set role = 'writer'`), /permission denied/);
+  await assert.rejects(db.query(`select claim_purchases(array_fill('${token}'::uuid, array[101]))`), /Too many/);
+  await db.exec('reset role');
+ });
  await t.test('unknown legacy permissive policies are removed on upgrade', async () => {
   await db.exec('reset role; create policy legacy_leak on articles for select to authenticated using (true); grant select(content) on articles to anon;');
   await db.exec(sql);
