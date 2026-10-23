@@ -58,12 +58,52 @@ async function adminApprove(admin: Page, utr: string) {
   await expect(admin.getByRole('row', { name: new RegExp(utr) })).toHaveCount(0);
 }
 
+const MAIL = process.env.MAIL_URL || 'http://127.0.0.1:54324';
+const seenLinks = new Set<string>();
+// Reads the newest Supabase Auth email to `to` from the local mail catcher
+// (Mailpit, or Inbucket on older CLIs) and returns its verify link of `type`.
+async function emailLink(to: string, type: 'signup' | 'recovery'): Promise<string> {
+  const pattern = /https?:\/\/[^\s"'<>]*\/auth\/v1\/verify\?[^\s"'<>]+/g;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const bodies: string[] = [];
+    try {
+      const search = await fetch(`${MAIL}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
+      if (search.ok) {
+        const { messages = [] } = await search.json() as { messages?: { ID: string }[] };
+        for (const m of messages) {
+          const full = await (await fetch(`${MAIL}/api/v1/message/${m.ID}`)).json() as { Text?: string; HTML?: string };
+          bodies.push(`${full.HTML ?? ''}\n${full.Text ?? ''}`);
+        }
+      } else {
+        const box = to.split('@')[0];
+        const list = await (await fetch(`${MAIL}/api/v1/mailbox/${box}`)).json() as { id: string }[];
+        for (const m of list.reverse()) {
+          const full = await (await fetch(`${MAIL}/api/v1/mailbox/${box}/${m.id}`)).json() as { body?: { text?: string; html?: string } };
+          bodies.push(`${full.body?.html ?? ''}\n${full.body?.text ?? ''}`);
+        }
+      }
+    } catch { /* mail catcher not ready yet */ }
+    for (const body of bodies) {
+      for (const raw of body.match(pattern) ?? []) {
+        const link = raw.replaceAll('&amp;', '&');
+        if (link.includes(`type=${type}`) && !seenLinks.has(link)) { seenLinks.add(link); return link; }
+      }
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error(`No ${type} email for ${to}`);
+}
+
+// Email confirmation is ON (as on hosted Supabase): sign-up asks to confirm,
+// and the emailed link signs the reader in and opens their account.
 async function signUp(page: Page, who: typeof ASHA) {
   await page.goto('/login?mode=signup');
   await page.getByLabel('Your name').fill(who.name);
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill(who.password);
   await page.getByRole('button', { name: 'Create account' }).last().click();
+  await expect(page.getByText(`Check ${who.email} for a confirmation link`)).toBeVisible();
+  await page.goto(await emailLink(who.email, 'signup'));
   await page.waitForURL('**/account');
 }
 
@@ -98,6 +138,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await page.goto(`/article/${PAID}`);
     await expect(page.getByRole('heading', { name: 'Article locked' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Bought it on another device? Sign in' })).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/05-article-locked.png`, fullPage: true });
   });
 
   test('2. anonymous UPI purchase: UTR, admin approval, article unlocks by itself', async () => {
@@ -108,6 +149,8 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await adminApprove(adminTab.page, UTR_A);
     await page.waitForURL(`**/article/${PAID}`, { timeout: 60_000 });
     await expect(page.getByText(PAID_BODY)).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/06-article-unlocked.png`, fullPage: true });
+    await adminTab.page.screenshot({ path: `${SHOTS}/07-admin.png`, fullPage: true });
     await page.goto('/');
     await expect(page.getByRole('link', { name: 'Read', exact: true })).toBeVisible();
   });
@@ -208,6 +251,82 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await page.getByRole('link', { name: 'Admin dashboard' }).click();
     await expect(page.getByRole('heading', { name: 'Pending payments' })).toBeVisible();
     await context.close();
+  });
+
+  test('12. forgot password: emailed link, new password works, old one does not', async ({ browser }) => {
+    const { page, context } = await newPage(browser);
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Forgot password?' }).click();
+    await page.getByLabel('Email').fill(RAVI.email);
+    await page.getByRole('button', { name: 'Send reset link' }).click();
+    await expect(page.getByText(`If ${RAVI.email} has a PayRead account, a reset link is on its way`)).toBeVisible();
+    // An unknown address gets the same answer (no account enumeration).
+    await page.getByLabel('Email').fill(`nobody.${RUN}@payread.test`);
+    await page.getByRole('button', { name: 'Send reset link' }).click();
+    await expect(page.getByText(`If nobody.${RUN}@payread.test has a PayRead account`)).toBeVisible();
+    await page.goto(await emailLink(RAVI.email, 'recovery'));
+    await page.waitForURL('**/reset-password**');
+    await page.getByLabel('New password').fill('ravi-new-pass-456');
+    await page.getByLabel('Repeat new password').fill('ravi-new-pass-456');
+    await page.screenshot({ path: `${SHOTS}/08-reset-password.png` });
+    await page.getByRole('button', { name: 'Save new password' }).click();
+    await page.waitForURL('**/account');
+    await page.getByRole('button', { name: 'Sign out' }).click();
+    await page.waitForURL((url) => url.pathname === '/');
+    await signIn(page, RAVI);
+    await expect(page.getByText('Wrong email or password.')).toBeVisible();
+    await page.getByLabel('Password').fill('ravi-new-pass-456');
+    await page.getByRole('button', { name: 'Sign in' }).last().click();
+    await page.waitForURL('**/account');
+    await context.close();
+  });
+
+  test('13. phone width: no sideways scrolling, nothing cut off', async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    page.on('pageerror', (e) => pageErrors.push(`${page.url()}: ${e.message}`));
+    const overflow = () => page.evaluate(() => {
+      const wide = [...document.querySelectorAll('body *')].filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1) && getComputedStyle(el).position !== 'fixed';
+      }).slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String((el as HTMLElement).className)}`);
+      return { scroll: document.documentElement.scrollWidth, width: window.innerWidth, wide };
+    });
+    const check = async (path: string, shot: string, ready: () => Promise<void>) => {
+      await page.goto(path);
+      await ready();
+      await page.waitForTimeout(1200);
+      const o = await overflow();
+      expect(o.scroll, `${path} scrolls sideways (${o.scroll}px > ${o.width}px): ${o.wide.join(', ')}`).toBeLessThanOrEqual(o.width);
+      await page.screenshot({ path: `${SHOTS}/${shot}.png`, fullPage: true });
+    };
+    await check('/', 'm1-home', () => expect(page.getByRole('link', { name: 'Read free' }).first()).toBeVisible());
+    await check('/login', 'm2-login', () => expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible());
+    await check(`/article/${PAID}`, 'm3-article-locked', () => expect(page.getByRole('heading', { name: 'Article locked' })).toBeVisible());
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Read for ₹100.00' }).click();
+    await page.getByRole('button', { name: 'Use manual UPI instead' }).click();
+    await expect(page.getByRole('link', { name: 'Pay with UPI' })).toBeVisible();
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${SHOTS}/m4-pay-dialog.png` });
+    expect((await overflow()).scroll).toBeLessThanOrEqual(390);
+    await page.getByRole('button', { name: 'Close payment dialog' }).click();
+    await signIn(page, ASHA);
+    await page.waitForURL('**/account');
+    await check('/account', 'm5-account', () => expect(page.getByRole('heading', { name: /^Hello, / })).toBeVisible());
+    await check(`/article/${PAID}`, 'm6-article-unlocked', () => expect(page.getByText(PAID_BODY)).toBeVisible());
+    await context.close();
+    const admin = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const adminPage = await admin.newPage();
+    await signIn(adminPage, ADMIN);
+    await adminPage.waitForURL('**/account');
+    await adminPage.goto('/admin');
+    await expect(adminPage.getByRole('heading', { name: 'Pending payments' })).toBeVisible();
+    await adminPage.waitForTimeout(1000);
+    const scroll = await adminPage.evaluate(() => document.documentElement.scrollWidth);
+    await adminPage.screenshot({ path: `${SHOTS}/m7-admin.png`, fullPage: true });
+    expect(scroll, 'admin page scrolls sideways on a phone').toBeLessThanOrEqual(390);
+    await admin.close();
   });
 
   test.afterAll(async () => {
