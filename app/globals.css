@@ -104,37 +104,44 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:-.5px}
 .mist-still::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse 75% 70% at 50% 40%,rgba(4,8,7,0) 55%,rgba(4,8,7,.6) 100%)}
 .mist-fog{inset:-12%;background:
-  radial-gradient(36% 30% at 76% 16%,rgba(143,227,181,.22),rgba(143,227,181,0) 70%),
-  radial-gradient(30% 26% at 58% 8%,rgba(150,215,190,.16),rgba(150,215,190,0) 70%),
-  radial-gradient(44% 38% at 22% 28%,rgba(21,104,90,.58),rgba(21,104,90,0) 72%),
-  radial-gradient(40% 34% at 46% 52%,rgba(76,64,186,.22),rgba(76,64,186,0) 72%),
-  radial-gradient(52% 42% at 88% 50%,rgba(14,78,68,.5),rgba(14,78,68,0) 75%),
-  radial-gradient(30% 24% at 34% 10%,rgba(120,200,170,.14),rgba(120,200,170,0) 70%),
+  radial-gradient(34% 40% at 80% 14%,rgba(160,198,182,.30),rgba(160,198,182,0) 72%),
+  radial-gradient(30% 26% at 64% 34%,rgba(118,168,150,.20),rgba(118,168,150,0) 70%),
+  radial-gradient(26% 30% at 92% 42%,rgba(126,176,156,.16),rgba(126,176,156,0) 70%),
+  radial-gradient(36% 30% at 76% 16%,rgba(143,227,181,.18),rgba(143,227,181,0) 70%),
+  radial-gradient(44% 38% at 22% 28%,rgba(21,104,90,.55),rgba(21,104,90,0) 72%),
+  radial-gradient(40% 34% at 46% 52%,rgba(76,64,186,.18),rgba(76,64,186,0) 72%),
+  radial-gradient(52% 42% at 88% 50%,rgba(14,78,68,.45),rgba(14,78,68,0) 75%),
+  radial-gradient(30% 24% at 38% 10%,rgba(120,190,165,.14),rgba(120,190,165,0) 70%),
   radial-gradient(72% 60% at 50% 28%,rgba(9,46,40,.9),rgba(9,46,40,0) 82%);
   animation:mist-drift 38s ease-in-out infinite alternate;will-change:transform}
-.mist-rays{inset:0;mix-blend-mode:screen;transform-origin:86% 0;animation:mist-rays 14s ease-in-out infinite alternate;background:
-  radial-gradient(26% 30% at 86% -2%,rgba(245,235,217,.5),rgba(245,235,217,0) 72%),
-  repeating-conic-gradient(from 196deg at 86% -4%,
-    rgba(245,235,217,.16) 0deg .8deg,rgba(245,235,217,0) .8deg 2.6deg,
-    rgba(245,235,217,.08) 2.6deg 3.1deg,rgba(245,235,217,0) 3.1deg 5.9deg,
-    rgba(245,235,217,.12) 5.9deg 6.5deg,rgba(245,235,217,0) 6.5deg 9.2deg);
-  -webkit-mask-image:radial-gradient(68% 88% at 86% 0%,#000 0%,rgba(0,0,0,.5) 34%,transparent 74%);
-  mask-image:radial-gradient(68% 88% at 86% 0%,#000 0%,rgba(0,0,0,.5) 34%,transparent 74%)}
+.mist-rays{inset:0;mix-blend-mode:screen;animation:mist-rays 9s ease-in-out infinite alternate;background:
+  radial-gradient(22% 26% at 86% -3%,rgba(245,235,217,.55),rgba(245,235,217,0) 72%),
+  conic-gradient(from 158deg at 86% -6%,
+    rgba(245,235,217,0) 0deg, rgba(245,235,217,.10) 4deg, rgba(245,235,217,0) 8deg,
+    rgba(245,235,217,0) 13deg, rgba(245,235,217,.26) 17deg, rgba(245,235,217,.08) 21deg, rgba(245,235,217,0) 24deg,
+    rgba(245,235,217,0) 30deg, rgba(245,235,217,.18) 33deg, rgba(245,235,217,0) 36deg,
+    rgba(245,235,217,0) 41deg, rgba(245,235,217,.12) 47deg, rgba(245,235,217,.20) 51deg, rgba(245,235,217,0) 56deg,
+    rgba(245,235,217,0) 62deg, rgba(245,235,217,.15) 65deg, rgba(245,235,217,0) 68deg,
+    rgba(245,235,217,0) 75deg, rgba(245,235,217,.10) 80deg, rgba(245,235,217,0) 86deg,
+    rgba(245,235,217,0) 93deg, rgba(245,235,217,.07) 98deg, rgba(245,235,217,0) 104deg,
+    rgba(245,235,217,0) 360deg);
+  -webkit-mask-image:radial-gradient(64% 92% at 86% 0%,#000 0%,rgba(0,0,0,.6) 30%,transparent 76%);
+  mask-image:radial-gradient(64% 92% at 86% 0%,#000 0%,rgba(0,0,0,.6) 30%,transparent 76%)}
 .mist-bokeh{inset:0;animation:mist-float 22s ease-in-out infinite alternate;background:
-  radial-gradient(circle at 18% 16%,rgba(143,227,181,.20),rgba(143,227,181,0) 34px),
-  radial-gradient(circle at 31% 42%,rgba(245,235,217,.12),rgba(245,235,217,0) 22px),
-  radial-gradient(circle at 47% 22%,rgba(143,227,181,.14),rgba(143,227,181,0) 18px),
-  radial-gradient(circle at 63% 34%,rgba(245,235,217,.16),rgba(245,235,217,0) 28px),
-  radial-gradient(circle at 72% 12%,rgba(245,235,217,.18),rgba(245,235,217,0) 20px),
-  radial-gradient(circle at 82% 30%,rgba(143,227,181,.16),rgba(143,227,181,0) 30px),
-  radial-gradient(circle at 90% 18%,rgba(245,235,217,.14),rgba(245,235,217,0) 16px),
-  radial-gradient(circle at 9% 52%,rgba(143,227,181,.10),rgba(143,227,181,0) 26px),
-  radial-gradient(circle at 56% 60%,rgba(143,227,181,.08),rgba(143,227,181,0) 24px),
-  radial-gradient(circle at 39% 8%,rgba(245,235,217,.12),rgba(245,235,217,0) 14px)}
+  radial-gradient(circle at 20% 11%,rgba(190,215,200,.20),rgba(190,215,200,0) 40px),
+  radial-gradient(circle at 54% 26%,rgba(190,215,200,.16),rgba(190,215,200,0) 30px),
+  radial-gradient(circle at 84% 31%,rgba(200,220,205,.22),rgba(200,220,205,0) 36px),
+  radial-gradient(circle at 81% 42%,rgba(190,215,200,.18),rgba(190,215,200,0) 44px),
+  radial-gradient(circle at 72% 8%,rgba(245,235,217,.18),rgba(245,235,217,0) 22px),
+  radial-gradient(circle at 63% 46%,rgba(143,227,181,.12),rgba(143,227,181,0) 26px),
+  radial-gradient(circle at 12% 40%,rgba(143,227,181,.10),rgba(143,227,181,0) 30px),
+  radial-gradient(circle at 38% 6%,rgba(245,235,217,.12),rgba(245,235,217,0) 16px),
+  radial-gradient(circle at 92% 14%,rgba(245,235,217,.14),rgba(245,235,217,0) 18px),
+  radial-gradient(circle at 46% 58%,rgba(143,227,181,.08),rgba(143,227,181,0) 24px)}
 .mist-grain{inset:0;opacity:.08;mix-blend-mode:overlay;background-size:160px 160px;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 .mist-still.is-covered>span{animation-play-state:paused}
 @keyframes mist-drift{0%{transform:translate3d(-2%,0,0) scale(1)}50%{transform:translate3d(1.5%,-1.5%,0) scale(1.06)}100%{transform:translate3d(3%,1%,0) scale(1.03)}}
-@keyframes mist-rays{from{transform:rotate(-1.4deg);opacity:.8}to{transform:rotate(1.4deg);opacity:1}}
+@keyframes mist-rays{from{opacity:.72}to{opacity:1}}
 @keyframes mist-float{from{transform:translate3d(0,10px,0)}to{transform:translate3d(-6px,-16px,0)}}
 @media (prefers-reduced-motion:reduce){.mist-still>span{animation:none}.mist-canvas{transition:none}}
