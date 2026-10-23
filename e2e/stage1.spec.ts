@@ -333,6 +333,49 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await admin.close();
   });
 
+  test('14. mist: live WebGL where supported, the CSS still everywhere else', async ({ browser }) => {
+    // With WebGL (CI renders it in software): the live canvas fades in over the still.
+    const withGl = await browser.newContext();
+    const glPage = await withGl.newPage();
+    glPage.on('pageerror', (e) => pageErrors.push(`${glPage.url()}: ${e.message}`));
+    await glPage.goto('/');
+    await expect(glPage.locator('canvas.mist-canvas')).toHaveAttribute('data-live', 'true', { timeout: 20_000 });
+    await expect(glPage.getByTestId('mist-still')).toHaveClass(/is-covered/);
+    await glPage.waitForTimeout(2000);
+    await glPage.screenshot({ path: `${SHOTS}/f0-home-webgl.png` });
+    await withGl.close();
+
+    // Without WebGL (graphics acceleration off): the still is the background.
+    for (const [label, viewport] of [['desktop', { width: 1280, height: 720 }], ['phone', { width: 390, height: 844 }]] as const) {
+      const context = await browser.newContext({ viewport, deviceScaleFactor: label === 'phone' ? 2 : 1 });
+      await context.addInitScript(() => {
+        const original = HTMLCanvasElement.prototype.getContext;
+        // @ts-expect-error test override of an overloaded DOM method
+        HTMLCanvasElement.prototype.getContext = function (type: string, ...rest: unknown[]) {
+          if (/webgl/i.test(type)) return null;
+          // @ts-expect-error forwarding the original overloads
+          return original.call(this, type, ...rest);
+        };
+      });
+      const page = await context.newPage();
+      page.on('pageerror', (e) => pageErrors.push(`${page.url()}: ${e.message}`));
+      for (const [path, name] of [['/', 'home'], ['/login', 'login']] as const) {
+        await page.goto(path);
+        await page.waitForTimeout(2500);
+        await expect(page.locator('canvas.mist-canvas')).toHaveAttribute('data-live', 'false');
+        const still = page.getByTestId('mist-still');
+        await expect(still).toBeVisible();
+        await expect(still).not.toHaveClass(/is-covered/);
+        // The still really paints: its fog layer has gradients and covers the hero.
+        const fog = await page.locator('.mist-fog').evaluate((el) => ({ bg: getComputedStyle(el).backgroundImage, w: el.getBoundingClientRect().width }));
+        expect(fog.bg).toContain('radial-gradient');
+        expect(fog.w).toBeGreaterThan(viewport.width);
+        await page.screenshot({ path: `${SHOTS}/f-${name}-no-webgl-${label}.png` });
+      }
+      await context.close();
+    }
+  });
+
   test.afterAll(async () => {
     await browserA?.context.close();
     await adminTab?.context.close();
