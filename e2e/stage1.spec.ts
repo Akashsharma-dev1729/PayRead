@@ -104,7 +104,8 @@ async function signUp(page: Page, who: typeof ASHA) {
   await page.getByRole('button', { name: 'Create account' }).last().click();
   await expect(page.getByText(`Check ${who.email} for a confirmation link`)).toBeVisible();
   await page.goto(await emailLink(who.email, 'signup'));
-  await page.waitForURL('**/account');
+  // The link returns with the sign-in code after "#", so compare the path only.
+  await page.waitForURL((url) => url.pathname === '/account');
 }
 
 async function signIn(page: Page, who: { email: string; password: string }, path = '/login') {
@@ -265,7 +266,7 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await page.getByRole('button', { name: 'Send reset link' }).click();
     await expect(page.getByText(`If nobody.${RUN}@payread.test has a PayRead account`)).toBeVisible();
     await page.goto(await emailLink(RAVI.email, 'recovery'));
-    await page.waitForURL('**/reset-password**');
+    await page.waitForURL((url) => url.pathname === '/reset-password');
     await page.getByLabel('New password').fill('ravi-new-pass-456');
     await page.getByLabel('Repeat new password').fill('ravi-new-pass-456');
     await page.screenshot({ path: `${SHOTS}/08-reset-password.png` });
