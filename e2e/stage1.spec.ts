@@ -267,8 +267,11 @@ test.describe.serial('stage 1: accounts on top of the UPI flow', () => {
     await expect(page.getByText(`If nobody.${RUN}@payread.test has a PayRead account`)).toBeVisible();
     await page.goto(await emailLink(RAVI.email, 'recovery'));
     await page.waitForURL((url) => url.pathname === '/reset-password');
-    await page.getByLabel('New password').fill('ravi-new-pass-456');
-    await page.getByLabel('Repeat new password').fill('ravi-new-pass-456');
+    const field = page.getByLabel('New password', { exact: true });
+    try { await field.waitFor({ state: 'visible', timeout: 20_000 }); }
+    catch (e) { await page.screenshot({ path: `${SHOTS}/08-reset-password-failed.png` }); throw e; }
+    await field.fill('ravi-new-pass-456');
+    await page.getByLabel('Repeat new password', { exact: true }).fill('ravi-new-pass-456');
     await page.screenshot({ path: `${SHOTS}/08-reset-password.png` });
     await page.getByRole('button', { name: 'Save new password' }).click();
     await page.waitForURL('**/account');
