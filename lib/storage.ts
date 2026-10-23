@@ -48,6 +48,14 @@ export function storedPurchaseTokens(): string[] {
   }
   return [...tokens].slice(0, 100);
 }
+// A saved token that no longer opens its article (the purchase was refunded or
+// revoked) is dropped, so the home page stops showing the article as unlocked.
+export function forgetAccess(id: string) {
+  const record = readRecord('payread_access');
+  if (!(id in record)) return;
+  delete record[id];
+  try { localStorage.setItem('payread_access', JSON.stringify(record)); } catch { /* storage unavailable */ }
+}
 // After sign-out: the purchases now live in the account, not in this browser.
 export function forgetBrowserPurchases() {
   try { localStorage.removeItem('payread_access'); localStorage.removeItem('payread_pending'); }

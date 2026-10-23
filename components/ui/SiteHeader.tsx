@@ -7,7 +7,7 @@ export default function SiteHeader({ session, loading }: { session: Session | nu
   const name = (session?.user?.user_metadata?.display_name as string | undefined) || session?.user?.email?.split('@')[0] || '';
   return <nav className="nav" aria-label="Main">
     <a className="brand" href="/" aria-label="PayRead home">
-      <span className="brand-dot" aria-hidden="true" />Pay<span>Read</span>
+      <span className="brand-dot" aria-hidden="true" /><span>Pay<span className="brand-accent">Read</span></span>
     </a>
     <div className="nav-links">
       {loading ? <span className="nav-placeholder" aria-hidden="true" />

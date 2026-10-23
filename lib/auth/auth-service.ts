@@ -96,6 +96,32 @@ export class AuthService {
     return { session: data.session, needsConfirmation: !data.session };
   }
 
+  /**
+   * Emails a reset link. The result never reveals whether the address has an
+   * account; only a rate limit or a network problem is reported.
+   */
+  async requestPasswordReset(emailInput: string, redirectTo: string): Promise<void> {
+    const client = this.requireClient();
+    const email = AuthService.normalizeEmail(emailInput);
+    const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+    if (!error) return;
+    const message = (error.message || '').toLowerCase();
+    if (message.includes('rate limit') || error.status === 429 || message.includes('fetch')) throw new AuthError(AuthService.friendly(error));
+  }
+
+  /** Sets a new password for the signed-in user (also used after a reset link). */
+  async updatePassword(passwordInput: string, confirmInput: string): Promise<void> {
+    const client = this.requireClient();
+    const password = AuthService.checkPassword(passwordInput);
+    if (password !== confirmInput) throw new AuthError('The two passwords do not match.');
+    const { error } = await client.auth.updateUser({ password });
+    if (!error) return;
+    const message = (error.message || '').toLowerCase();
+    if (message.includes('different')) throw new AuthError('Choose a password different from your current one.');
+    if (message.includes('session') || message.includes('jwt')) throw new AuthError('This reset link has expired. Request a new one.');
+    throw new AuthError(AuthService.friendly(error));
+  }
+
   async signOut(): Promise<void> {
     if (!this.client) return;
     const { error } = await this.client.auth.signOut();

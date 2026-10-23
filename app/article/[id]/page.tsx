@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
-import { accessToken, pendingToken, UUID } from '@/lib/storage';
+import { accessToken, forgetAccess, pendingToken, UUID } from '@/lib/storage';
 import { formatPrice, saveAccess } from '@/lib/payment';
 import { useAuth } from '@/lib/auth/use-auth';
 import { AccountService } from '@/lib/auth/account-service';
@@ -98,6 +98,10 @@ export default function ArticlePage() {
           }
           setArticle(unlocked as Article);
           setAllowed(true);
+        } else if (savedToken && preview.price_paise !== 0) {
+          // The check succeeded but this browser's saved purchase no longer opens
+          // the article (refunded or revoked): stop showing it as unlocked.
+          forgetAccess(id);
         }
       } catch (requestError) {
         if (!cancelled) setError(messageFromError(requestError));
@@ -131,8 +135,8 @@ export default function ArticlePage() {
 
   return (
     <main className="container">
+      <SiteHeader session={auth.session} loading={auth.loading} />
       <article className="article">
-        <SiteHeader session={auth.session} loading={auth.loading} />
         <a className="muted" href="/">
           ← Back
         </a>

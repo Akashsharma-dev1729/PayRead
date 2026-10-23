@@ -111,6 +111,7 @@ export default function AccountPage() {
           <button className="btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
         </form>
         <div className="row" style={{ marginTop: 24, justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+          <a className="btn ghost" href="/reset-password">Change password</a>
           {profile?.isAdmin && <a className="btn ghost" href="/admin">Admin dashboard</a>}
           <button className="btn secondary" type="button" onClick={() => void signOut()}>Sign out</button>
         </div>

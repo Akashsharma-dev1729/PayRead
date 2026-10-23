@@ -20,7 +20,7 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:-.5px}
 /* Header */
 .nav{padding:28px 0;flex-wrap:wrap;gap:12px;position:relative;z-index:2}
 .brand{display:inline-flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:400;font-size:30px;color:var(--ink-strong);text-decoration:none}
-.brand span{color:var(--accent)}
+.brand .brand-accent{color:var(--accent)}
 .brand-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px var(--accent);animation:pr-breathe 3.2s ease-in-out infinite}
 .nav-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .nav-placeholder{display:inline-block;width:96px;height:44px}
@@ -88,3 +88,5 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:-.5px}
 .pill.bad{background:rgba(255,157,157,.12);color:var(--danger-ink)}
 
 @media (prefers-reduced-motion:reduce){.rise{opacity:1;animation:none}.brand-dot,.skeleton{animation:none}.btn,.card{transition:none}}
+.link-button{background:none;border:0;padding:10px 4px;min-height:44px;color:var(--accent);font:inherit;font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.link-button:hover{color:#ffffff}
