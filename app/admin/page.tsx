@@ -356,6 +356,7 @@ export default function Admin() {
 
       {loadingPayments && <p>Loading payments…</p>}
       {!loadingPayments && payments.length === 0 && <p>No payments waiting for review.</p>}
+      <div className="table-scroll">
       <table className="table">
         <thead>
           <tr>
@@ -386,6 +387,7 @@ export default function Admin() {
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

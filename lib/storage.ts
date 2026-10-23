@@ -35,6 +35,32 @@ export function paymentSession(id: string, method: 'manual_upi' | 'razorpay' = '
 export function restartPaymentSession(id: string, method: 'manual_upi' | 'razorpay' = 'manual_upi'): PaymentSession {
   return freshSession(id, method);
 }
+// Every purchase token this browser holds (completed and in progress), so they
+// can be attached to the account after sign-in. Malformed entries are skipped.
+export function storedPurchaseTokens(): string[] {
+  const tokens = new Set<string>();
+  for (const value of Object.values(readRecord('payread_access'))) {
+    if (typeof value === 'string' && UUID.test(value)) tokens.add(value.toLowerCase());
+  }
+  for (const value of Object.values(readRecord('payread_pending'))) {
+    const token = (value as Partial<PaymentSession> | null)?.token;
+    if (typeof token === 'string' && UUID.test(token)) tokens.add(token.toLowerCase());
+  }
+  return [...tokens].slice(0, 100);
+}
+// A saved token that no longer opens its article (the purchase was refunded or
+// revoked) is dropped, so the home page stops showing the article as unlocked.
+export function forgetAccess(id: string) {
+  const record = readRecord('payread_access');
+  if (!(id in record)) return;
+  delete record[id];
+  try { localStorage.setItem('payread_access', JSON.stringify(record)); } catch { /* storage unavailable */ }
+}
+// After sign-out: the purchases now live in the account, not in this browser.
+export function forgetBrowserPurchases() {
+  try { localStorage.removeItem('payread_access'); localStorage.removeItem('payread_pending'); }
+  catch { /* storage unavailable: nothing stored */ }
+}
 // Token of an in-progress purchase, used to pick up an approval that happened
 // while the payment dialog was closed.
 export function pendingToken(id: string): string | null {
