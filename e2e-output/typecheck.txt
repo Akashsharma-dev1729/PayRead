@@ -1,0 +1,7 @@
+
+> payread-basic@1.0.0 typecheck
+> next typegen && tsc --noEmit
+
+Generating route types...
+✓ Route types generated successfully
+TYPECHECK_EXIT=0

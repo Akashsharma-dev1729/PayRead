@@ -1,0 +1,20 @@
+
+Running 14 tests using 1 worker
+
+  ✓   1 e2e/stage1.spec.ts:129:7 › stage 1: accounts on top of the UPI flow › 1. anonymous reader: free reads open, paid ones are locked, header offers sign-in (14.7s)
+  ✓   2 e2e/stage1.spec.ts:145:7 › stage 1: accounts on top of the UPI flow › 2. anonymous UPI purchase: UTR, admin approval, article unlocks by itself (30.6s)
+  ✓   3 e2e/stage1.spec.ts:159:7 › stage 1: accounts on top of the UPI flow › 3. signing up on that browser attaches the purchase to the new account (21.8s)
+  ✓   4 e2e/stage1.spec.ts:169:7 › stage 1: accounts on top of the UPI flow › 4. another device: sign in and the purchase opens there too (15.6s)
+  ✓   5 e2e/stage1.spec.ts:186:7 › stage 1: accounts on top of the UPI flow › 5. signed-in purchase on device B is listed in the account after approval (12.9s)
+  ✓   6 e2e/stage1.spec.ts:199:7 › stage 1: accounts on top of the UPI flow › 6. renaming updates the profile and the header (1.3s)
+  ✓   7 e2e/stage1.spec.ts:210:7 › stage 1: accounts on top of the UPI flow › 7. a second reader is isolated and cannot reuse an approved UPI transaction ID (19.1s)
+  ✓   8 e2e/stage1.spec.ts:221:7 › stage 1: accounts on top of the UPI flow › 8. signing out removes access from that browser; signing back in restores it (16.8s)
+  ✓   9 e2e/stage1.spec.ts:235:7 › stage 1: accounts on top of the UPI flow › 9. login never redirects off-site and bad credentials are explained (18.9s)
+  ✓  10 e2e/stage1.spec.ts:248:7 › stage 1: accounts on top of the UPI flow › 10. admin signs in from the reader login and reaches the dashboard (12.0s)
+  ✓  11 e2e/stage1.spec.ts:257:7 › stage 1: accounts on top of the UPI flow › 12. forgot password: emailed link, new password works, old one does not (30.4s)
+  ✓  12 e2e/stage1.spec.ts:288:7 › stage 1: accounts on top of the UPI flow › 13. phone width: no sideways scrolling, nothing cut off (31.4s)
+  ✓  13 e2e/stage1.spec.ts:336:7 › stage 1: accounts on top of the UPI flow › 14. mist: live WebGL where supported, the CSS still everywhere else (40.9s)
+  ✓  14 e2e/stage1.spec.ts:385:7 › stage 1: accounts on top of the UPI flow › 11. no uncaught errors or hydration errors on any page (5ms)
+
+  14 passed (4.5m)
+E2E_EXIT=0

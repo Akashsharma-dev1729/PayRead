@@ -1,0 +1,79 @@
+   ▲ Next.js 15.5.27
+   - Local:        http://localhost:3000
+   - Network:      http://10.1.1.9:3000
+
+ ✓ Starting...
+ ✓ Ready in 1090ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.8s (767 modules)
+ GET / 200 in 3102ms
+ GET / 200 in 51ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1278ms (760 modules)
+ GET /login 200 in 1414ms
+ ✓ Compiled /account in 167ms (767 modules)
+ GET /account 200 in 242ms
+ ✓ Compiled /admin in 170ms (774 modules)
+ GET /admin 200 in 248ms
+ ✓ Compiled /reset-password in 162ms (781 modules)
+ GET /reset-password 200 in 238ms
+ ✓ Compiled /article/[id] in 187ms (790 modules)
+ GET /article/71000000-0000-4000-8000-000000000001 200 in 639ms
+ GET / 200 in 43ms
+ GET /article/71000000-0000-4000-8000-000000000001 200 in 149ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 155ms
+ GET / 200 in 31ms
+ GET /admin 200 in 36ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 77ms
+ GET / 200 in 48ms
+ GET /login?mode=signup 200 in 85ms
+ GET /account 200 in 115ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 62ms
+ GET /login?next=%2Farticle%2F71000000-0000-4000-8000-000000000100 200 in 58ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 93ms
+ GET / 200 in 85ms
+ GET / 200 in 46ms
+ GET /account 200 in 52ms
+ GET /admin 200 in 41ms
+ GET /article/10000000-0000-4000-8000-0000000000e2 200 in 119ms
+ GET /account 200 in 55ms
+ GET /account 200 in 60ms
+ GET /account 200 in 44ms
+ GET /login?mode=signup 200 in 34ms
+ GET /account 200 in 59ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 91ms
+ GET / 200 in 58ms
+ GET /account 200 in 73ms
+ GET / 200 in 44ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 96ms
+ GET /login?next=%2Farticle%2F71000000-0000-4000-8000-000000000100 200 in 79ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 93ms
+ GET /login?next=https%3A%2F%2Fevil.example 200 in 76ms
+ GET /account 200 in 37ms
+ GET /login?next=%2F%2Fevil.example 200 in 103ms
+ GET /account 200 in 39ms
+ GET /login 200 in 59ms
+ GET /account 200 in 56ms
+ GET /admin 200 in 41ms
+ GET /login 200 in 50ms
+ GET /reset-password 200 in 77ms
+ GET /account 200 in 51ms
+ GET / 200 in 44ms
+ GET /login 200 in 76ms
+ GET /account 200 in 42ms
+ GET / 200 in 125ms
+ GET /login 200 in 56ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 75ms
+ GET / 200 in 71ms
+ GET /login 200 in 77ms
+ GET /account 200 in 58ms
+ GET /account 200 in 83ms
+ GET /article/71000000-0000-4000-8000-000000000100 200 in 99ms
+ GET /login 200 in 54ms
+ GET /account 200 in 40ms
+ GET /admin 200 in 43ms
+ GET / 200 in 49ms
+ GET / 200 in 50ms
+ GET /login 200 in 55ms
+ GET / 200 in 68ms
+ GET /login 200 in 79ms

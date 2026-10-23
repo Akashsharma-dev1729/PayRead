@@ -1,0 +1,276 @@
+TAP version 13
+# Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+# Subtest: auth helpers validate input, hide provider internals and only allow same-site redirects
+ok 1 - auth helpers validate input, hide provider internals and only allow same-site redirects
+  ---
+  duration_ms: 132.932839
+  type: 'test'
+  ...
+# Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+# Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+# Subtest: login, sign-up, account purchases and owned articles
+ok 2 - login, sign-up, account purchases and owned articles
+  ---
+  duration_ms: 969.75688
+  type: 'test'
+  ...
+# Subtest: admin loads automatically, detects review conflict, and discards role check after signout
+ok 3 - admin loads automatically, detects review conflict, and discards role check after signout
+  ---
+  duration_ms: 456.460612
+  type: 'test'
+  ...
+# Subtest: SQL migration, actual PostgreSQL permissions and purchase lifecycle
+    # Subtest: anonymous cannot read content or payment tokens directly
+    ok 1 - anonymous cannot read content or payment tokens directly
+      ---
+      duration_ms: 5.948402
+      type: 'test'
+      ...
+    # Subtest: creation is idempotent and database-priced, conflicting identities rejected
+    ok 2 - creation is idempotent and database-priced, conflicting identities rejected
+      ---
+      duration_ms: 6.991548
+      type: 'test'
+      ...
+    # Subtest: pending and wrong-token requests cannot unlock content
+    ok 3 - pending and wrong-token requests cannot unlock content
+      ---
+      duration_ms: 4.641276
+      type: 'test'
+      ...
+    # Subtest: ordinary signed-in account cannot approve or enumerate purchases
+    ok 4 - ordinary signed-in account cannot approve or enumerate purchases
+      ---
+      duration_ms: 3.134959
+      type: 'test'
+      ...
+    # Subtest: UPI: approval needs the buyer's transaction ID; bad IDs and other tokens are refused
+    ok 5 - UPI: approval needs the buyer's transaction ID; bad IDs and other tokens are refused
+      ---
+      duration_ms: 8.97019
+      type: 'test'
+      ...
+    # Subtest: UPI: one transfer cannot back two purchases until the first claim is rejected
+    ok 6 - UPI: one transfer cannot back two purchases until the first claim is rejected
+      ---
+      duration_ms: 13.402971
+      type: 'test'
+      ...
+    # Subtest: admin approval is atomic, server-timestamped, and does not repeat
+    ok 7 - admin approval is atomic, server-timestamped, and does not repeat
+      ---
+      duration_ms: 2.049589
+      type: 'test'
+      ...
+    # Subtest: completed token unlocks only its article
+    ok 8 - completed token unlocks only its article
+      ---
+      duration_ms: 5.118268
+      type: 'test'
+      ...
+    # Subtest: accounts: profiles on sign-up, purchases claimed by token, content on any device
+    ok 9 - accounts: profiles on sign-up, purchases claimed by token, content on any device
+      ---
+      duration_ms: 38.094175
+      type: 'test'
+      ...
+    # Subtest: unknown legacy permissive policies are removed on upgrade
+    ok 10 - unknown legacy permissive policies are removed on upgrade
+      ---
+      duration_ms: 21.240588
+      type: 'test'
+      ...
+    1..10
+ok 4 - SQL migration, actual PostgreSQL permissions and purchase lifecycle
+  ---
+  duration_ms: 2258.008818
+  type: 'test'
+  ...
+# Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+# Subtest: free reader bypasses checkout; paid reader remains locked without a token
+ok 5 - free reader bypasses checkout; paid reader remains locked without a token
+  ---
+  duration_ms: 426.159617
+  type: 'test'
+  ...
+# Subtest: deployed catalog upgrade: free access, one ₹100 article, old purchases preserved, rerun safe
+ok 6 - deployed catalog upgrade: free access, one ₹100 article, old purchases preserved, rerun safe
+  ---
+  duration_ms: 2009.956834
+  type: 'test'
+  ...
+# Subtest: empty catalog gets exactly five free articles and one ₹100 article, without duplicates
+ok 7 - empty catalog gets exactly five free articles and one ₹100 article, without duplicates
+  ---
+  duration_ms: 1375.092962
+  type: 'test'
+  ...
+# Subtest: without WebGL the CSS mist stays visible and the canvas never covers it
+ok 8 - without WebGL the CSS mist stays visible and the canvas never covers it
+  ---
+  duration_ms: 433.479348
+  type: 'test'
+  ...
+# Subtest: payment dialog Strict Mode, authoritative amount, UPI link, UTR claim, reopen, keyboard, completed and rejected purchase
+ok 9 - payment dialog Strict Mode, authoritative amount, UPI link, UTR claim, reopen, keyboard, completed and rejected purchase
+  ---
+  duration_ms: 680.767948
+  type: 'test'
+  ...
+# Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+# Subtest: forgot password: request a link, expired link, mismatch, then a new password
+ok 10 - forgot password: request a link, expired link, mismatch, then a new password
+  ---
+  duration_ms: 706.474056
+  type: 'test'
+  ...
+# Subtest: checkout cancellation and unverified callback never unlock; server-confirmed payment does
+ok 11 - checkout cancellation and unverified callback never unlock; server-confirmed payment does
+  ---
+  duration_ms: 383.062329
+  type: 'test'
+  ...
+# Subtest: Razorpay service with real SQL and a simulated gateway
+    # Subtest: server price wins and retries reuse the saved order
+    ok 1 - server price wins and retries reuse the saved order
+      ---
+      duration_ms: 27.685477
+      type: 'test'
+      ...
+    # Subtest: anonymous cannot create/complete/revoke gateway records directly
+    ok 2 - anonymous cannot create/complete/revoke gateway records directly
+      ---
+      duration_ms: 2.755806
+      type: 'test'
+      ...
+    # Subtest: manual admin cannot approve gateway purchases
+    ok 3 - manual admin cannot approve gateway purchases
+      ---
+      duration_ms: 3.94868
+      type: 'test'
+      ...
+    # Subtest: forged signature and substituted order do not grant access
+    ok 4 - forged signature and substituted order do not grant access
+      ---
+      duration_ms: 3.238276
+      type: 'test'
+      ...
+    # Subtest: authorized-only and wrong-amount payments do not unlock
+    ok 5 - authorized-only and wrong-amount payments do not unlock
+      ---
+      duration_ms: 3.964323
+      type: 'test'
+      ...
+    # Subtest: captured verified payment unlocks exactly once
+    ok 6 - captured verified payment unlocks exactly once
+      ---
+      duration_ms: 6.352594
+      type: 'test'
+      ...
+    # Subtest: invalid or mutated raw webhook is rejected
+    ok 7 - invalid or mutated raw webhook is rejected
+      ---
+      duration_ms: 0.419244
+      type: 'test'
+      ...
+    # Subtest: duplicate webhook delivery is idempotent
+    ok 8 - duplicate webhook delivery is idempotent
+      ---
+      duration_ms: 3.295072
+      type: 'test'
+      ...
+    # Subtest: refund revokes access; late captured delivery cannot restore it
+    ok 9 - refund revokes access; late captured delivery cannot restore it
+      ---
+      duration_ms: 4.767898
+      type: 'test'
+      ...
+    # Subtest: webhook confirms a second purchase even without browser callback
+    ok 10 - webhook confirms a second purchase even without browser callback
+      ---
+      duration_ms: 9.792004
+      type: 'test'
+      ...
+    # Subtest: uncertain order creation never blindly creates a second order
+    ok 11 - uncertain order creation never blindly creates a second order
+      ---
+      duration_ms: 3.011092
+      type: 'test'
+      ...
+    # Subtest: signature validation rejects missing and malformed values
+    ok 12 - signature validation rejects missing and malformed values
+      ---
+      duration_ms: 0.193633
+      type: 'test'
+      ...
+    1..12
+ok 12 - Razorpay service with real SQL and a simulated gateway
+  ---
+  duration_ms: 1935.290132
+  type: 'test'
+  ...
+# Subtest: a refunded purchase stops showing as unlocked; a failed check never drops access
+ok 13 - a refunded purchase stops showing as unlocked; a failed check never drops access
+  ---
+  duration_ms: 644.617146
+  type: 'test'
+  ...
+# Subtest: pending identity survives reopening
+ok 14 - pending identity survives reopening
+  ---
+  duration_ms: 1.765449
+  type: 'test'
+  ...
+# Subtest: a rejected purchase can be replaced; pending token is readable for recovery
+ok 15 - a rejected purchase can be replaced; pending token is readable for recovery
+  ---
+  duration_ms: 0.32376
+  type: 'test'
+  ...
+# Subtest: UPI transaction IDs are normalised and validated
+ok 16 - UPI transaction IDs are normalised and validated
+  ---
+  duration_ms: 0.280143
+  type: 'test'
+  ...
+# Subtest: access readers tolerate corrupt and malformed storage
+ok 17 - access readers tolerate corrupt and malformed storage
+  ---
+  duration_ms: 0.279573
+  type: 'test'
+  ...
+# Subtest: confirmed access is recoverable
+ok 18 - confirmed access is recoverable
+  ---
+  duration_ms: 0.194203
+  type: 'test'
+  ...
+# Subtest: blocked storage stops checkout before any payment can be made
+ok 19 - blocked storage stops checkout before any payment can be made
+  ---
+  duration_ms: 0.413345
+  type: 'test'
+  ...
+# Subtest: Supabase URL must be a project origin, never a REST path
+ok 20 - Supabase URL must be a project origin, never a REST path
+  ---
+  duration_ms: 131.975319
+  type: 'test'
+  ...
+# Subtest: article page picks up a UPI approval made while the payment dialog was closed
+ok 21 - article page picks up a UPI approval made while the payment dialog was closed
+  ---
+  duration_ms: 269.7396
+  type: 'test'
+  ...
+1..21
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9035.155958
+UNIT_EXIT=0
