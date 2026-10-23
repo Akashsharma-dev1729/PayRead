@@ -7,7 +7,15 @@
  * reduced-motion users, and silently does nothing where WebGL is unavailable
  * (the page keeps its solid background).
  */
-export type MistOptions = { accent?: string; intensity?: number; resolutionScale?: number };
+export type MistOptions = {
+  accent?: string;
+  intensity?: number;
+  resolutionScale?: number;
+  /** Called once the first frame is on screen (the CSS still can fade out). */
+  onFirstFrame?: () => void;
+  /** Called if the GPU context is lost later; the CSS still should show again. */
+  onLost?: () => void;
+};
 
 const VERTEX = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
 
@@ -85,11 +93,24 @@ export class MistRenderer {
   private resizeObserver?: ResizeObserver;
   private intersectionObserver?: IntersectionObserver;
   private readonly onVisibility = () => { this.visible = !document.hidden; this.schedule(); };
+  private firstFrameSent = false;
+  private readonly onFirstFrame?: () => void;
+  private readonly onLost?: () => void;
+  private readonly onContextLost = (e: Event) => {
+    e.preventDefault();
+    this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.raf = 0;
+    this.firstFrameSent = false;
+    this.onLost?.();
+  };
 
   constructor(private readonly canvas: HTMLCanvasElement, options: MistOptions = {}) {
     this.accent = hexToRgb(options.accent ?? '#8fe3b5');
     this.intensity = options.intensity ?? 0.85;
     this.scale = options.resolutionScale ?? 0.6;
+    this.onFirstFrame = options.onFirstFrame;
+    this.onLost = options.onLost;
     this.reducedMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   }
 
@@ -107,6 +128,7 @@ export class MistRenderer {
       this.intersectionObserver.observe(this.canvas);
     }
     document.addEventListener('visibilitychange', this.onVisibility);
+    this.canvas.addEventListener('webglcontextlost', this.onContextLost);
     this.running = true;
     if (this.reducedMotion) this.draw(); else this.schedule();
     return true;
@@ -125,6 +147,7 @@ export class MistRenderer {
     this.resizeObserver?.disconnect();
     this.intersectionObserver?.disconnect();
     document.removeEventListener('visibilitychange', this.onVisibility);
+    this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     // No loseContext(): the same canvas may be started again (React dev double-mount).
     this.gl = null;
   }
@@ -200,5 +223,9 @@ export class MistRenderer {
     gl.uniform3f(u.uAccent, this.accent[0], this.accent[1], this.accent[2]);
     gl.uniform1f(u.uMist, this.intensity);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!this.firstFrameSent && !gl.isContextLost()) {
+      this.firstFrameSent = true;
+      this.onFirstFrame?.();
+    }
   }
 }
