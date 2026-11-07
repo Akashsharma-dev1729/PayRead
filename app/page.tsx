@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import PayModal from '@/components/PayModal';
+import MistBackground from '@/components/ui/MistBackground';
+import SiteHeader from '@/components/ui/SiteHeader';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
 import { formatPrice } from '@/lib/payment';
 import { accessToken } from '@/lib/storage';
+import { useAuth, useOwnedArticles } from '@/lib/auth/use-auth';
+import { navigation } from '@/lib/navigation';
 import type { Article } from '@/lib/types';
 
 export default function Home() {
@@ -12,6 +16,8 @@ export default function Home() {
   const [selected, setSelected] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(supabaseConfigError || '');
+  const auth = useAuth();
+  const { owned } = useOwnedArticles(auth.session);
 
   useEffect(() => {
     if (!supabase) {
@@ -54,81 +60,84 @@ export default function Home() {
     };
   }, []);
 
+  // Bought in this browser or by the signed-in account: open it, never offer to pay again.
+  const isUnlocked = (a: Article) => owned.has(a.id) || accessToken(a.id) !== null;
+
   return (
-    <main className="container">
-      <nav className="nav">
-        <div className="brand">
-          Pay<span>Read</span>
+    <>
+      <div className="hero-shell">
+        <MistBackground />
+        <div className="container" style={{ paddingBottom: 0 }}>
+          <SiteHeader session={auth.session} loading={auth.loading} />
+          <section className="hero">
+            <p className="eyebrow rise d1">Pay per article</p>
+            <h1 className="rise d2">Good writing, <em>without</em> another subscription.</h1>
+            <p className="lead muted rise d3">Explore free articles, or unlock our premium read for ₹100.</p>
+          </section>
         </div>
+      </div>
 
-        <a className="muted small" href="/admin">
-          Admin
-        </a>
-      </nav>
-
-      <section className="hero">
-        <p className="muted">PAY PER ARTICLE</p>
-        <h1>Good writing, without another subscription.</h1>
-        <p className="muted">Explore free articles, or unlock our premium read for ₹100.</p>
-      </section>
-
-      {supabaseConfigError ? (
-        <section className="card config-card">
-          <h2>PayRead is not connected yet</h2>
-          <p className="muted">
-            Supabase deployment configuration is missing. Add the required environment variables in Vercel, then redeploy this project.
-          </p>
-          <p className="danger small">{supabaseConfigError}</p>
-        </section>
-      ) : error ? (
-        <section className="card">
-          <h2>Unable to load articles</h2>
-          <p className="danger">{error}</p>
-        </section>
-      ) : loading ? (
-        <section className="grid">
-          {[1, 2, 3].map((n) => (
-            <article className="card skeleton-card" key={n}>
-              <div className="skeleton skeleton-title"></div>
-              <div className="skeleton skeleton-text"></div>
-              <div className="skeleton skeleton-text short"></div>
-              <div className="row" style={{ marginTop: '20px' }}>
-                <div className="skeleton skeleton-price"></div>
-                <div className="skeleton skeleton-btn"></div>
-              </div>
-            </article>
-          ))}
-        </section>
-      ) : articles.length === 0 ? (
-        <p className="muted">No published articles yet.</p>
-      ) : (
-        <section className="grid">
-          {articles.map((a) => (
-            <article className="card" key={a.id}>
-              <h2>{a.title}</h2>
-              <p className="muted">{a.excerpt}</p>
-              <div className="row">
-                <span className="price">{a.price_paise === 0 ? 'Free' : formatPrice(a.price_paise)}</span>
-                {a.price_paise === 0 ? (
-                  <a className="btn" href={`/article/${a.id}`}>Read free</a>
-                ) : (
-                  <button className="btn" onClick={() => accessToken(a.id) ? location.assign(`/article/${a.id}`) : setSelected(a)}>
-                    Read for {formatPrice(a.price_paise)}
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
+      <main className="container">
+        {supabaseConfigError ? (
+          <section className="card config-card">
+            <h2>PayRead is not connected yet</h2>
+            <p className="muted">
+              Supabase deployment configuration is missing. Add the required environment variables in Vercel, then redeploy this project.
+            </p>
+            <p className="danger small">{supabaseConfigError}</p>
+          </section>
+        ) : error ? (
+          <section className="card">
+            <h2>Unable to load articles</h2>
+            <p className="danger">{error}</p>
+          </section>
+        ) : loading ? (
+          <section className="grid" aria-busy="true" aria-label="Loading articles">
+            {[1, 2, 3].map((n) => (
+              <article className="card" key={n}>
+                <div className="skeleton skeleton-title"></div>
+                <div className="skeleton skeleton-text"></div>
+                <div className="skeleton skeleton-text short"></div>
+                <div className="row" style={{ marginTop: '20px' }}>
+                  <div className="skeleton skeleton-price"></div>
+                  <div className="skeleton skeleton-btn"></div>
+                </div>
+              </article>
+            ))}
+          </section>
+        ) : articles.length === 0 ? (
+          <p className="muted">No published articles yet.</p>
+        ) : (
+          <section className="grid rise d4">
+            {articles.map((a) => (
+              <article className="card" key={a.id}>
+                <h2>{a.title}</h2>
+                <p className="muted">{a.excerpt}</p>
+                <div className="row">
+                  <span className="price">{a.price_paise === 0 ? 'Free' : isUnlocked(a) ? 'Unlocked' : formatPrice(a.price_paise)}</span>
+                  {a.price_paise === 0 ? (
+                    <a className="btn" href={`/article/${a.id}`}>Read free</a>
+                  ) : isUnlocked(a) ? (
+                    <a className="btn" href={`/article/${a.id}`}>Read</a>
+                  ) : (
+                    <button className="btn" onClick={() => setSelected(a)}>
+                      Read for {formatPrice(a.price_paise)}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+      </main>
 
       {selected && (
         <PayModal
           article={selected}
           onClose={() => setSelected(null)}
-          onUnlocked={() => location.assign(`/article/${selected.id}`)}
+          onUnlocked={() => navigation.go(`/article/${selected.id}`)}
         />
       )}
-    </main>
+    </>
   );
 }

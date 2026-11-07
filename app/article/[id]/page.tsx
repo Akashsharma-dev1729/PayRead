@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase, supabaseConfigError } from '@/lib/supabase';
-import { accessToken, pendingToken, UUID } from '@/lib/storage';
+import { accessToken, forgetAccess, pendingToken, UUID } from '@/lib/storage';
 import { formatPrice, saveAccess } from '@/lib/payment';
+import { useAuth } from '@/lib/auth/use-auth';
+import { AccountService } from '@/lib/auth/account-service';
+import SiteHeader from '@/components/ui/SiteHeader';
 import type { Article } from '@/lib/types';
 
 function messageFromError(error: unknown) {
@@ -17,8 +20,12 @@ export default function ArticlePage() {
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(supabaseConfigError || '');
+  const auth = useAuth();
+  const userId = auth.session?.user?.id ?? null;
 
   useEffect(() => {
+    // Wait for the sign-in state: an account may own this article.
+    if (auth.loading) return;
     setArticle(null);
     setAllowed(false);
     setError(supabaseConfigError || '');
@@ -60,7 +67,7 @@ export default function ArticlePage() {
         const savedToken = accessToken(id);
         const token = savedToken || pendingToken(id);
 
-        if (preview.price_paise !== 0 && !token) return;
+        if (preview.price_paise !== 0 && !token && !userId) return;
 
         const { data: contentRows, error: contentError } = await client.rpc(
           'get_article_content',
@@ -84,8 +91,17 @@ export default function ArticlePage() {
           if (!savedToken && token && preview.price_paise !== 0) {
             try { saveAccess(id, token); } catch { /* access still works for this visit */ }
           }
+          // Signed in: make sure this browser's purchase also belongs to the account,
+          // so it opens on other devices too.
+          if (userId && token && preview.price_paise !== 0) {
+            void AccountService.shared().claimBrowserPurchases().catch(() => {});
+          }
           setArticle(unlocked as Article);
           setAllowed(true);
+        } else if (savedToken && preview.price_paise !== 0) {
+          // The check succeeded but this browser's saved purchase no longer opens
+          // the article (refunded or revoked): stop showing it as unlocked.
+          forgetAccess(id);
         }
       } catch (requestError) {
         if (!cancelled) setError(messageFromError(requestError));
@@ -99,9 +115,9 @@ export default function ArticlePage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, auth.loading, userId]);
 
-  if (loading || (article && article.id !== id)) {
+  if (loading || auth.loading || (article && article.id !== id)) {
     return (
       <main className="container">
         <p className="muted">Loading…</p>
@@ -119,6 +135,7 @@ export default function ArticlePage() {
 
   return (
     <main className="container">
+      <SiteHeader session={auth.session} loading={auth.loading} />
       <article className="article">
         <a className="muted" href="/">
           ← Back
@@ -135,9 +152,16 @@ export default function ArticlePage() {
             <p className="muted">
               Purchase access from the home page for {formatPrice(article.price_paise)}.
             </p>
-            <a className="btn" href="/">
-              Go back to PayRead
-            </a>
+            <div className="row" style={{ justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+              <a className="btn" href="/">
+                Go back to PayRead
+              </a>
+              {!auth.session && (
+                <a className="btn ghost" href={`/login?next=${encodeURIComponent(`/article/${id}`)}`}>
+                  Bought it on another device? Sign in
+                </a>
+              )}
+            </div>
           </div>
         )}
       </article>

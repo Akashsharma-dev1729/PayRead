@@ -31,6 +31,10 @@ test('blocked storage stops checkout before any payment can be made',()=>{
 
 test('Supabase URL must be a project origin, never a REST path', async()=>{
  const {isValidSupabaseUrl}=await import('../lib/supabase');
+ const env=process.env as Record<string,string|undefined>;const saved=env.NODE_ENV;
+ env.NODE_ENV='development';assert.equal(isValidSupabaseUrl('http://127.0.0.1:54321'),true);
+ env.NODE_ENV='production';assert.equal(isValidSupabaseUrl('http://127.0.0.1:54321'),false);assert.equal(isValidSupabaseUrl('http://example.supabase.co'),false);
+ env.NODE_ENV=saved;
  assert.equal(isValidSupabaseUrl('https://example.supabase.co'),true);
  for(const value of ['https://example.supabase.co/rest/v1','https://example.supabase.co?x=1','https://user:pass@example.supabase.co','https://example.supabase.co.evil.test']) assert.equal(isValidSupabaseUrl(value),false);
 });
