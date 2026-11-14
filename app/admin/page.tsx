@@ -339,6 +339,7 @@ export default function Admin() {
         <h1>Pending payments</h1>
         <p className="muted small">Manual UPI payments. Razorpay payments are verified automatically.</p>
 
+        <a className="btn ghost" href="/admin/stats">Stats</a>
         <button className="btn secondary" onClick={() => void signOut()}>
           Sign out
         </button>

@@ -7,6 +7,7 @@ import { accessToken, forgetAccess, pendingToken, UUID } from '@/lib/storage';
 import { formatPrice, saveAccess } from '@/lib/payment';
 import { useAuth } from '@/lib/auth/use-auth';
 import { AccountService } from '@/lib/auth/account-service';
+import { track } from '@/lib/analytics/tracker';
 import SiteHeader from '@/components/ui/SiteHeader';
 import type { Article } from '@/lib/types';
 
@@ -67,7 +68,7 @@ export default function ArticlePage() {
         const savedToken = accessToken(id);
         const token = savedToken || pendingToken(id);
 
-        if (preview.price_paise !== 0 && !token && !userId) return;
+        if (preview.price_paise !== 0 && !token && !userId) { track('paywall_view', { articleId: id }); return; }
 
         const { data: contentRows, error: contentError } = await client.rpc(
           'get_article_content',
@@ -98,7 +99,11 @@ export default function ArticlePage() {
           }
           setArticle(unlocked as Article);
           setAllowed(true);
-        } else if (savedToken && preview.price_paise !== 0) {
+          track('article_read', { articleId: id });
+        } else if (preview.price_paise !== 0) {
+          track('paywall_view', { articleId: id });
+        }
+        if (!unlocked && savedToken && preview.price_paise !== 0) {
           // The check succeeded but this browser's saved purchase no longer opens
           // the article (refunded or revoked): stop showing it as unlocked.
           forgetAccess(id);
