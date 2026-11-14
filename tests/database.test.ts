@@ -127,6 +127,55 @@ test('SQL migration, actual PostgreSQL permissions and purchase lifecycle', asyn
   await assert.rejects(db.query(`select claim_purchases(array_fill('${token}'::uuid, array[101]))`), /Too many/);
   await db.exec('reset role');
  });
+ await t.test('tracking: anonymous events are cleaned and limited; only admins read stats', async () => {
+  const sA = '40000000-0000-4000-8000-00000000000a', sB = '40000000-0000-4000-8000-00000000000b', sC = '40000000-0000-4000-8000-00000000000c';
+  const track = (s: string, name: string, path: string | null, art: string | null, src: string | null, med: string | null, dev: string | null) =>
+    db.query('select track_event($1::uuid,$2,$3,$4::uuid,$5,$6,null,$7)', [s, name, path, art, src, med, dev]);
+  await db.exec('reset role; set role anon');
+  await track(sA, 'page_view', '/', null, ' Quora!! ', 'Answer', 'desktop');
+  await track(sA, 'paywall_view', `/article/${article}`, article, 'quora', 'answer', 'desktop');
+  await track(sA, 'checkout_open', '/', article, 'quora', 'answer', 'desktop');
+  await track(sA, 'upi_submitted', '/', article, 'quora', 'answer', 'desktop');
+  await track(sB, 'page_view', '/login', null, null, null, 'mobile');
+  // Bad input is dropped or cleaned, never an error.
+  await track(sB, 'drop_tables', '/', null, null, null, null);
+  await track(sB, 'article_read', 'javascript:alert(1)', '10000000-0000-4000-8000-0000000000ff', 'x'.repeat(500), null, 'toaster');
+  await assert.rejects(db.query('select * from analytics_events'), /permission denied/);
+  await assert.rejects(db.query('select admin_stats(30)'), /permission denied/);
+  await db.exec('reset role');
+  const rows = (await db.query<{name:string;path:string|null;article_id:string|null;source:string|null;device:string|null}>(
+    `select name, path, article_id, source, device from analytics_events order by id`)).rows;
+  assert.equal(rows.length, 6);
+  assert.deepEqual([rows[0].source, rows[0].device], ['quora', 'desktop']);
+  const bad = rows[5];
+  assert.deepEqual([bad.name, bad.path, bad.article_id, bad.device], ['article_read', null, null, null]);
+  assert.equal(bad.source!.length, 60);
+
+  await db.exec(`set role authenticated; set request.jwt.claim.sub = '${user}'`);
+  await assert.rejects(db.query('select admin_stats(30)'), /Admin access required/);
+  await db.exec(`set request.jwt.claim.sub = '${admin}'`);
+  await assert.rejects(db.query('select admin_stats(0)'), /between 1 and 365/);
+  type Stats = { sessions:number; page_views:number; purchases:number; revenue_paise:number; signups:number;
+    funnel:Record<string,number>; top_sources:{source:string;sessions:number;checkouts:number;upi_submitted:number}[];
+    top_articles:{id:string;title:string;opened:number;checkouts:number;purchases:number}[]; daily:{sessions:number}[]; devices:Record<string,number> };
+  const s = (await db.query<{s:Stats}>('select admin_stats(30) s')).rows[0].s;
+  await db.exec('reset role');
+  const paid = (await db.query<{n:number;r:number}>(`select count(*)::int n, coalesce(sum(amount_paise),0)::int r from payments where status='completed'`)).rows[0];
+  assert.equal(s.sessions, 2); assert.equal(s.page_views, 2);
+  assert.deepEqual(s.funnel, { visited: 2, opened_article: 2, started_checkout: 1, submitted_upi: 1, paid: paid.n });
+  assert.equal(s.purchases, paid.n); assert.equal(s.revenue_paise, paid.r);
+  assert.ok(s.signups >= 2);
+  assert.deepEqual(s.top_sources.map(x => [x.source, x.sessions, x.checkouts, x.upi_submitted]), [['quora', 1, 1, 1], ['x'.repeat(60), 1, 0, 0]]);
+  assert.deepEqual(s.top_articles.map(x => [x.title, x.opened, x.checkouts]), [['Paid', 1, 1]]);
+  assert.equal(s.daily.length, 30); assert.equal(s.daily.at(-1)!.sessions, 2);
+  assert.deepEqual(s.devices, { desktop: 1, mobile: 1 });
+
+  // One session cannot flood the table.
+  await db.exec('set role anon');
+  for (let i = 0; i < 125; i++) await track(sC, 'page_view', '/', null, null, null, null);
+  await db.exec('reset role');
+  assert.equal((await db.query<{n:number}>(`select count(*)::int n from analytics_events where session_id='${sC}'`)).rows[0].n, 120);
+ });
  await t.test('unknown legacy permissive policies are removed on upgrade', async () => {
   await db.exec('reset role; create policy legacy_leak on articles for select to authenticated using (true); grant select(content) on articles to anon;');
   await db.exec(sql);

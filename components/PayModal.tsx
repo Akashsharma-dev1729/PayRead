@@ -4,11 +4,13 @@ import ManualPayModal from './ManualPayModal';
 import RazorpayPayment from './RazorpayPayment';
 import {paymentSession,readRecord} from '@/lib/storage';
 import type {Article} from '@/lib/types';
+import {track} from '@/lib/analytics/tracker';
 export default function PayModal(props:{article:Article;onClose:()=>void;onUnlocked:()=>void}){
  const [method,setMethod]=useState<'manual_upi'|'razorpay'|null>(null);
  const [ready,setReady]=useState(false);const [error,setError]=useState('');const [active,setActive]=useState(false);
  const dialog=useRef<HTMLDivElement>(null);const activeRef=useRef(false);activeRef.current=active;
  const close=useRef(props.onClose);close.current=props.onClose;
+ useEffect(()=>{track('checkout_open',{articleId:props.article.id});},[props.article.id]);
  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;
   const record=readRecord('payread_pending')[props.article.id] as {method?:string}|undefined;
   if(record)setMethod(record.method==='razorpay'?'razorpay':'manual_upi');setReady(true);

@@ -145,3 +145,27 @@ h1,h2,h3{font-family:var(--font-display);font-weight:400;letter-spacing:-.5px}
 @keyframes mist-rays{from{opacity:.72}to{opacity:1}}
 @keyframes mist-float{from{transform:translate3d(0,10px,0)}to{transform:translate3d(-6px,-16px,0)}}
 @media (prefers-reduced-motion:reduce){.mist-still>span{animation:none}.mist-canvas{transition:none}}
+
+/* ---- Admin stats --------------------------------------------------------- */
+.stats h2{font-size:28px;margin:0 0 6px;color:var(--ink-strong)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin:24px 0}
+.stat-tile{padding:18px 20px;border-radius:var(--radius-md);background:var(--glass);border:1px solid var(--glass-edge)}
+.stat-label{font-size:13px;color:var(--muted-ink)}
+.stat-value{font-family:var(--font-display);font-size:42px;line-height:1.1;color:var(--ink-strong);margin-top:6px;font-variant-numeric:tabular-nums}
+.stat-hint{font-size:13px;color:var(--faint-ink);margin-top:4px}
+.stat-card{margin-bottom:20px}
+.funnel{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:14px}
+.funnel-head{display:flex;justify-content:space-between;gap:12px;font-size:15px;margin-bottom:6px}
+.funnel-track{height:10px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
+.funnel-bar{height:100%;border-radius:999px;background:var(--accent)}
+.daily-chart{display:flex;align-items:flex-end;gap:2px;height:160px;margin-top:16px;padding-bottom:2px;border-bottom:1px solid rgba(255,255,255,.12)}
+.daily-col{position:relative;flex:1;height:100%;display:flex;align-items:flex-end;min-width:3px;outline:none}
+.daily-bar{width:100%;min-height:0;border-radius:4px 4px 0 0;background:var(--accent);opacity:.85}
+.daily-col:hover .daily-bar,.daily-col:focus-visible .daily-bar{opacity:1}
+.daily-tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;padding:6px 10px;border-radius:8px;
+  background:#0f1a16;border:1px solid var(--glass-edge);color:var(--ink);font-size:12px;line-height:1.4;opacity:0;pointer-events:none;transition:opacity .15s;z-index:2}
+.daily-col:hover .daily-tip,.daily-col:focus-visible .daily-tip{opacity:1}
+.daily-col:first-child .daily-tip{left:0;transform:none}.daily-col:last-child .daily-tip{left:auto;right:0;transform:none}
+.daily-axis{display:flex;justify-content:space-between;margin:6px 0 12px}
+.stats details summary{cursor:pointer;color:var(--accent);min-height:44px;display:flex;align-items:center}
+.stats .tabs{min-width:min(100%,330px)}

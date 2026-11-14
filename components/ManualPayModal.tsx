@@ -5,6 +5,7 @@ import { supabase, supabaseConfigError } from '@/lib/supabase';
 import { buildUpiLink, formatPrice, normalizeUtr, paymentConfigError, saveAccess } from '@/lib/payment';
 import { paymentSession, restartPaymentSession } from '@/lib/storage';
 import type { Article } from '@/lib/types';
+import { track } from '@/lib/analytics/tracker';
 
 type Status = 'starting' | 'pending' | 'success' | 'failed' | 'rejected';
 
@@ -114,6 +115,7 @@ export default function PayModal({ article, onClose, onUnlocked }: {
       if (submitError) { setUtrError(submitError.message); return; }
       if (data === 'failed') { setStatus('rejected'); return; }
       setUtr(value); setEditingUtr(false); setUtrInput('');
+      track('upi_submitted', { articleId: article.id });
     } catch (e) {
       setUtrError(`Could not submit: ${e instanceof Error ? e.message : 'Network error'}. Try again.`);
     } finally { setSubmitting(false); }
